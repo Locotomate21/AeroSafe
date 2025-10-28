@@ -1,0 +1,13 @@
+{
+    "ciudad": "Bogotá",
+    "pais": "CO",
+    "fecha": "2025-10-23T01:39:38.376841",
+    "temperatura": 11.91,
+    "humedad": 98,
+    "presion": 1017,
+    "viento": 1.34,
+    "visibilidad": 10000,
+    "descripcion": "nubes",
+    "codigo_aeropuerto": null,
+    "timestamp": "2025-10-23T01:39:38.376857"
+}

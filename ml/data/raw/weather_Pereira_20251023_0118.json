@@ -1,0 +1,13 @@
+{
+    "ciudad": "Pereira",
+    "pais": "CO",
+    "fecha": "2025-10-23T01:18:30.318820",
+    "temperatura": 15.65,
+    "humedad": 95,
+    "presion": 1016,
+    "viento": 0.45,
+    "visibilidad": 10000,
+    "descripcion": "nubes",
+    "codigo_aeropuerto": "SKPE",
+    "timestamp": "2025-10-23T01:18:30.318840"
+}

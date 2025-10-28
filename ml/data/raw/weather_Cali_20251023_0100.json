@@ -1,0 +1,13 @@
+{
+    "ciudad": "Cali",
+    "pais": "CO",
+    "fecha": "2025-10-23T01:00:07.102179",
+    "temperatura": 17.21,
+    "humedad": 94,
+    "presion": 1013,
+    "viento": 1.54,
+    "visibilidad": 10000,
+    "descripcion": "nubes dispersas",
+    "codigo_aeropuerto": "SKCL",
+    "timestamp": "2025-10-23T01:00:07.102193"
+}

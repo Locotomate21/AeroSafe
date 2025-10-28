@@ -1,0 +1,80 @@
+[
+    {
+        "ciudad": "Bogotá",
+        "pais": "CO",
+        "fecha": "2025-10-20T18:45:27.947403",
+        "temperatura": 17.04,
+        "humedad": 61,
+        "presion": 1012,
+        "viento": 2.68,
+        "visibilidad": 10000,
+        "descripcion": "muy nuboso",
+        "codigo_aeropuerto": "SKBO",
+        "timestamp": "2025-10-20T18:45:27.949031"
+    },
+    {
+        "ciudad": "Medellín",
+        "pais": "CO",
+        "fecha": "2025-10-20T18:45:29.194256",
+        "temperatura": 22.99,
+        "humedad": 68,
+        "presion": 1011,
+        "viento": 2.06,
+        "visibilidad": 10000,
+        "descripcion": "muy nuboso",
+        "codigo_aeropuerto": "SKRG",
+        "timestamp": "2025-10-20T18:45:29.195637"
+    },
+    {
+        "ciudad": "Cali",
+        "pais": "CO",
+        "fecha": "2025-10-20T18:45:30.456102",
+        "temperatura": 24.99,
+        "humedad": 57,
+        "presion": 1009,
+        "viento": 2.06,
+        "visibilidad": 9000,
+        "descripcion": "niebla",
+        "codigo_aeropuerto": "SKCL",
+        "timestamp": "2025-10-20T18:45:30.457700"
+    },
+    {
+        "ciudad": "Cartagena",
+        "pais": "CO",
+        "fecha": "2025-10-20T18:45:31.710661",
+        "temperatura": 29.79,
+        "humedad": 74,
+        "presion": 1008,
+        "viento": 6.26,
+        "visibilidad": 10000,
+        "descripcion": "nubes dispersas",
+        "codigo_aeropuerto": "SKCG",
+        "timestamp": "2025-10-20T18:45:31.712854"
+    },
+    {
+        "ciudad": "Barranquilla",
+        "pais": "CO",
+        "fecha": "2025-10-20T18:45:32.967700",
+        "temperatura": 31.88,
+        "humedad": 66,
+        "presion": 1009,
+        "viento": 2.06,
+        "visibilidad": 10000,
+        "descripcion": "lluvia moderada",
+        "codigo_aeropuerto": "SKBQ",
+        "timestamp": "2025-10-20T18:45:32.969716"
+    },
+    {
+        "ciudad": "Pereira",
+        "pais": "CO",
+        "fecha": "2025-10-20T18:45:34.225068",
+        "temperatura": 23.56,
+        "humedad": 69,
+        "presion": 1011,
+        "viento": 1.79,
+        "visibilidad": 10000,
+        "descripcion": "muy nuboso",
+        "codigo_aeropuerto": "SKPE",
+        "timestamp": "2025-10-20T18:45:34.228187"
+    }
+]

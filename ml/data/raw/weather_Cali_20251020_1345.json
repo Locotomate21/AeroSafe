@@ -1,0 +1,11 @@
+{
+    "ciudad": "Cali",
+    "pais": "CO",
+    "fecha": "2025-10-20T18:45:30.456102",
+    "temperatura": 24.99,
+    "humedad": 57,
+    "presion": 1009,
+    "viento": 2.06,
+    "visibilidad": 9000,
+    "descripcion": "niebla"
+}

@@ -1,0 +1,7 @@
+timestamp,codigo_aeropuerto,ciudad,pais,temperatura,humedad,presion,viento,visibilidad,descripcion
+2025-10-20T18:45:27.949031,SKBO,Bogotá,CO,17.04,61,1012,2.68,10000,muy nuboso
+2025-10-20T18:45:29.195637,SKRG,Medellín,CO,22.99,68,1011,2.06,10000,muy nuboso
+2025-10-20T18:45:30.457700,SKCL,Cali,CO,24.99,57,1009,2.06,9000,niebla
+2025-10-20T18:45:31.712854,SKCG,Cartagena,CO,29.79,74,1008,6.26,10000,nubes dispersas
+2025-10-20T18:45:32.969716,SKBQ,Barranquilla,CO,31.88,66,1009,2.06,10000,lluvia moderada
+2025-10-20T18:45:34.228187,SKPE,Pereira,CO,23.56,69,1011,1.79,10000,muy nuboso

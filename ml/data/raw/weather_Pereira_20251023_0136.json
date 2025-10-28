@@ -1,0 +1,13 @@
+{
+    "ciudad": "Pereira",
+    "pais": "CO",
+    "fecha": "2025-10-23T01:36:48.173301",
+    "temperatura": 15.67,
+    "humedad": 95,
+    "presion": 1015,
+    "viento": 0.45,
+    "visibilidad": 10000,
+    "descripcion": "nubes",
+    "codigo_aeropuerto": null,
+    "timestamp": "2025-10-23T01:36:48.173315"
+}

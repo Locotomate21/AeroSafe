@@ -1,0 +1,272 @@
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "C:\Users\USER\Desktop\aerosafe\backend\scripts\collect_weather_data.py", line 6, in <module>
+    from backend.utils.weather_data import get_weather
+  File "C:\Users\USER\Desktop\aerosafe\backend\utils\weather_data.py", line 43, in <module>
+    from backend.database import SessionLocal, Weather
+ModuleNotFoundError: No module named 'backend.database'
+DEBUG: API KEY = a45d492668dceb132d0d67106b718810
+Tarea completada a las  0:04:02,67 
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "C:\Users\USER\Desktop\aerosafe\backend\scripts\collect_weather_data.py", line 6, in <module>
+    from backend.utils.weather_data import get_weather
+  File "C:\Users\USER\Desktop\aerosafe\backend\utils\weather_data.py", line 43, in <module>
+    from backend.database import SessionLocal, Weather
+ModuleNotFoundError: No module named 'backend.database'
+DEBUG: API KEY = a45d492668dceb132d0d67106b718810
+Tarea completada a las  0:08:42,96 
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "C:\Users\USER\Desktop\aerosafe\backend\scripts\collect_weather_data.py", line 6, in <module>
+    from backend.utils.weather_data import get_weather
+  File "C:\Users\USER\Desktop\aerosafe\backend\utils\weather_data.py", line 43, in <module>
+    from backend.database import SessionLocal, Weather
+ModuleNotFoundError: No module named 'backend.database'
+DEBUG: API KEY = a45d492668dceb132d0d67106b718810
+Tarea completada a las  0:08:58,81 
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "C:\Users\USER\Desktop\aerosafe\backend\scripts\collect_weather_data.py", line 6, in <module>
+    from backend.utils.weather_data import get_weather
+  File "C:\Users\USER\Desktop\aerosafe\backend\utils\weather_data.py", line 43, in <module>
+    from backend.database import SessionLocal, Weather
+ModuleNotFoundError: No module named 'backend.database'
+DEBUG: API KEY = a45d492668dceb132d0d67106b718810
+Tarea completada a las  0:18:02,60 
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "C:\Users\USER\Desktop\aerosafe\backend\scripts\collect_weather_data.py", line 6, in <module>
+    from backend.utils.weather_data import get_weather
+  File "C:\Users\USER\Desktop\aerosafe\backend\utils\weather_data.py", line 6, in <module>
+    from backend.database import SessionLocal, Weather
+ModuleNotFoundError: No module named 'backend.database'
+DEBUG: API KEY = a45d492668dceb132d0d67106b718810
+Tarea completada a las  0:25:03,98 
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "C:\Users\USER\Desktop\aerosafe\backend\scripts\collect_weather_data.py", line 6, in <module>
+    from backend.utils.weather_data import get_weather
+  File "C:\Users\USER\Desktop\aerosafe\backend\utils\weather_data.py", line 6, in <module>
+    from backend.database import SessionLocal, Weather
+ModuleNotFoundError: No module named 'backend.database'
+DEBUG: API KEY = a45d492668dceb132d0d67106b718810
+Tarea completada a las  0:40:02,31 
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "C:\Users\USER\Desktop\aerosafe\backend\scripts\collect_weather_data.py", line 6, in <module>
+    from backend.utils.weather_data import get_weather
+  File "C:\Users\USER\Desktop\aerosafe\backend\utils\weather_data.py", line 8, in <module>
+    from backend.database import SessionLocal, Weather
+ModuleNotFoundError: No module named 'backend.database'
+DEBUG: API KEY = a45d492668dceb132d0d67106b718810
+Tarea completada a las  0:50:02,63 
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "C:\Users\USER\Desktop\aerosafe\backend\scripts\collect_weather_data.py", line 6, in <module>
+    from backend.utils.weather_data import get_weather
+  File "C:\Users\USER\Desktop\aerosafe\backend\utils\weather_data.py", line 8, in <module>
+    from backend.database import SessionLocal, Weather
+ModuleNotFoundError: No module named 'backend.database'
+DEBUG: API KEY = a45d492668dceb132d0d67106b718810
+Tarea completada a las 11:13:40,25 
+C:\Users\USER\AppData\Local\Programs\Python\Python313\python.exe: Error while finding module specification for 'backend.scripts.collect_weather_data' (ModuleNotFoundError: No module named 'backend.scripts')
+Tarea completada a las 15:18:19,58 
+C:\Users\USER\AppData\Local\Programs\Python\Python313\python.exe: Error while finding module specification for 'backend.scripts.collect_weather_data' (ModuleNotFoundError: No module named 'backend.scripts')
+Tarea completada a las 19:00:14,58 
+C:\Users\USER\AppData\Local\Programs\Python\Python313\python.exe: Error while finding module specification for 'backend.scripts.collect_weather_data' (ModuleNotFoundError: No module named 'backend.scripts')
+Tarea completada a las 21:40:18,93 
+C:\Users\USER\AppData\Local\Programs\Python\Python313\python.exe: Error while finding module specification for 'backend.scripts.collect_weather_data' (ModuleNotFoundError: No module named 'backend.scripts')
+Tarea completada a las 22:50:02,89 
+[2025-10-23 00:55:05] =============================
+[2025-10-23 00:55:05] 🚀 Ejecutando AEROSAFE - Thu Oct 23 00:55:05 2025
+[2025-10-23 00:55:06] ✅ Datos guardados: C:\Users\USER\Desktop\aerosafe\data\raw\weather_Bogotá_20251023_0055.json
+[2025-10-23 00:55:06] 🌤️ Clima guardado en DB: Bogotá
+[2025-10-23 00:55:06] ✅ Datos guardados: C:\Users\USER\Desktop\aerosafe\data\raw\weather_Medellín_20251023_0055.json
+[2025-10-23 00:55:06] 🌤️ Clima guardado en DB: Medellín
+[2025-10-23 00:55:07] ✅ Datos guardados: C:\Users\USER\Desktop\aerosafe\data\raw\weather_Cali_20251023_0055.json
+[2025-10-23 00:55:07] 🌤️ Clima guardado en DB: Cali
+[2025-10-23 00:55:07] ✅ Datos guardados: C:\Users\USER\Desktop\aerosafe\data\raw\weather_Cartagena_20251023_0055.json
+[2025-10-23 00:55:07] 🌤️ Clima guardado en DB: Cartagena
+[2025-10-23 00:55:08] ✅ Datos guardados: C:\Users\USER\Desktop\aerosafe\data\raw\weather_Barranquilla_20251023_0055.json
+[2025-10-23 00:55:08] 🌤️ Clima guardado en DB: Barranquilla
+[2025-10-23 00:55:08] ✅ Datos guardados: C:\Users\USER\Desktop\aerosafe\data\raw\weather_Pereira_20251023_0055.json
+[2025-10-23 00:55:08] 🌤️ Clima guardado en DB: Pereira
+[2025-10-23 00:55:08] ✅ Ejecución completada sin errores.
+
+[2025-10-23 01:00:05] =============================
+[2025-10-23 01:00:05] 🚀 Ejecutando AEROSAFE - Thu Oct 23 01:00:05 2025
+[2025-10-23 01:00:05] ✅ Datos guardados: C:\Users\USER\Desktop\aerosafe\data\raw\weather_Bogotá_20251023_0100.json
+[2025-10-23 01:00:05] 🌤️ Clima guardado en DB: Bogotá
+[2025-10-23 01:00:06] ✅ Datos guardados: C:\Users\USER\Desktop\aerosafe\data\raw\weather_Medellín_20251023_0100.json
+[2025-10-23 01:00:06] 🌤️ Clima guardado en DB: Medellín
+[2025-10-23 01:00:07] ✅ Datos guardados: C:\Users\USER\Desktop\aerosafe\data\raw\weather_Cali_20251023_0100.json
+[2025-10-23 01:00:07] 🌤️ Clima guardado en DB: Cali
+[2025-10-23 01:00:07] ✅ Datos guardados: C:\Users\USER\Desktop\aerosafe\data\raw\weather_Cartagena_20251023_0100.json
+[2025-10-23 01:00:07] 🌤️ Clima guardado en DB: Cartagena
+[2025-10-23 01:00:08] ✅ Datos guardados: C:\Users\USER\Desktop\aerosafe\data\raw\weather_Barranquilla_20251023_0100.json
+[2025-10-23 01:00:08] 🌤️ Clima guardado en DB: Barranquilla
+[2025-10-23 01:00:08] ✅ Datos guardados: C:\Users\USER\Desktop\aerosafe\data\raw\weather_Pereira_20251023_0100.json
+[2025-10-23 01:00:08] 🌤️ Clima guardado en DB: Pereira
+[2025-10-23 01:00:08] ✅ Ejecución completada sin errores.
+
+============================= 
+Ejecutando AEROSAFE - jue. 23/10/2025  1:07:05,59 
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "C:\Users\USER\Desktop\aerosafe\backend\utils\weather_data.py", line 102, in <module>
+    log_message("=============================")
+    ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\USER\Desktop\aerosafe\backend\utils\weather_data.py", line 26, in log_message
+    with open(LOG_PATH, "a", encoding="utf-8") as log:
+         ~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+PermissionError: [Errno 13] Permission denied: 'C:\\Users\\USER\\Desktop\\aerosafe\\backend\\utils\\..\\..\\log.txt'
+DEBUG: API KEY = a45d492668dceb132d0d67106b718810
+============================= 
+Ejecutando AEROSAFE - jue. 23/10/2025  1:10:50,37 
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "C:\Users\USER\Desktop\aerosafe\backend\utils\weather_data.py", line 102, in <module>
+    log_message("=============================")
+    ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\USER\Desktop\aerosafe\backend\utils\weather_data.py", line 26, in log_message
+    with open(LOG_PATH, "a", encoding="utf-8") as log:
+         ~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+PermissionError: [Errno 13] Permission denied: 'C:\\Users\\USER\\Desktop\\aerosafe\\backend\\utils\\..\\..\\log.txt'
+DEBUG: API KEY = a45d492668dceb132d0d67106b718810
+============================= 
+Ejecutando AEROSAFE - jue. 23/10/2025  1:11:16,03 
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "C:\Users\USER\Desktop\aerosafe\backend\utils\weather_data.py", line 102, in <module>
+    log_message("=============================")
+    ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\USER\Desktop\aerosafe\backend\utils\weather_data.py", line 26, in log_message
+    with open(LOG_PATH, "a", encoding="utf-8") as log:
+         ~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+PermissionError: [Errno 13] Permission denied: 'C:\\Users\\USER\\Desktop\\aerosafe\\backend\\utils\\..\\..\\log.txt'
+DEBUG: API KEY = a45d492668dceb132d0d67106b718810
+============================= 
+Ejecutando AEROSAFE - jue. 23/10/2025  1:11:24,67 
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "C:\Users\USER\Desktop\aerosafe\backend\utils\weather_data.py", line 102, in <module>
+    log_message("=============================")
+    ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\USER\Desktop\aerosafe\backend\utils\weather_data.py", line 26, in log_message
+    with open(LOG_PATH, "a", encoding="utf-8") as log:
+         ~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+PermissionError: [Errno 13] Permission denied: 'C:\\Users\\USER\\Desktop\\aerosafe\\backend\\utils\\..\\..\\log.txt'
+DEBUG: API KEY = a45d492668dceb132d0d67106b718810
+============================= 
+Ejecutando AEROSAFE - jue. 23/10/2025  1:13:31,58 
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "C:\Users\USER\Desktop\aerosafe\backend\utils\weather_data.py", line 102, in <module>
+    log_message("=============================")
+    ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\USER\Desktop\aerosafe\backend\utils\weather_data.py", line 26, in log_message
+    with open(LOG_PATH, "a", encoding="utf-8") as log:
+         ~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+PermissionError: [Errno 13] Permission denied: 'C:\\Users\\USER\\Desktop\\aerosafe\\backend\\utils\\..\\..\\log.txt'
+DEBUG: API KEY = a45d492668dceb132d0d67106b718810
+Tarea completada a las  1:13:32,44 
+ 
+============================= 
+Ejecutando AEROSAFE - jue. 23/10/2025  1:13:40,20 
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "C:\Users\USER\Desktop\aerosafe\backend\utils\weather_data.py", line 102, in <module>
+    log_message("=============================")
+    ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\USER\Desktop\aerosafe\backend\utils\weather_data.py", line 26, in log_message
+    with open(LOG_PATH, "a", encoding="utf-8") as log:
+         ~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+PermissionError: [Errno 13] Permission denied: 'C:\\Users\\USER\\Desktop\\aerosafe\\backend\\utils\\..\\..\\log.txt'
+DEBUG: API KEY = a45d492668dceb132d0d67106b718810
+Tarea completada a las  1:13:41,05 
+ 
+============================= 
+Ejecutando AEROSAFE - jue. 23/10/2025  1:13:51,78 
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "C:\Users\USER\Desktop\aerosafe\backend\utils\weather_data.py", line 102, in <module>
+    log_message("=============================")
+    ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\USER\Desktop\aerosafe\backend\utils\weather_data.py", line 26, in log_message
+    with open(LOG_PATH, "a", encoding="utf-8") as log:
+         ~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+PermissionError: [Errno 13] Permission denied: 'C:\\Users\\USER\\Desktop\\aerosafe\\backend\\utils\\..\\..\\log.txt'
+DEBUG: API KEY = a45d492668dceb132d0d67106b718810
+Tarea completada a las  1:13:52,58 
+ 
+[2025-10-23 01:15:54] =============================
+[2025-10-23 01:15:54] 🚀 Ejecutando AEROSAFE - Thu Oct 23 01:15:54 2025
+[2025-10-23 01:16:00] ✅ Datos guardados: C:\Users\USER\Desktop\aerosafe\data\raw\weather_Bogotá_20251023_0116.json
+[2025-10-23 01:16:00] 🌤️ Clima guardado en DB: Bogotá
+[2025-10-23 01:16:01] ✅ Datos guardados: C:\Users\USER\Desktop\aerosafe\data\raw\weather_Medellín_20251023_0116.json
+[2025-10-23 01:16:01] 🌤️ Clima guardado en DB: Medellín
+[2025-10-23 01:16:02] ✅ Datos guardados: C:\Users\USER\Desktop\aerosafe\data\raw\weather_Cali_20251023_0116.json
+[2025-10-23 01:16:02] 🌤️ Clima guardado en DB: Cali
+[2025-10-23 01:16:02] ✅ Datos guardados: C:\Users\USER\Desktop\aerosafe\data\raw\weather_Cartagena_20251023_0116.json
+[2025-10-23 01:16:02] 🌤️ Clima guardado en DB: Cartagena
+[2025-10-23 01:16:03] ✅ Datos guardados: C:\Users\USER\Desktop\aerosafe\data\raw\weather_Barranquilla_20251023_0116.json
+[2025-10-23 01:16:03] 🌤️ Clima guardado en DB: Barranquilla
+[2025-10-23 01:16:04] ✅ Datos guardados: C:\Users\USER\Desktop\aerosafe\data\raw\weather_Pereira_20251023_0116.json
+[2025-10-23 01:16:04] 🌤️ Clima guardado en DB: Pereira
+[2025-10-23 01:16:04] ✅ Ejecución completada sin errores.
+
+[2025-10-23 01:17:56] =============================
+[2025-10-23 01:17:56] 🚀 Ejecutando AEROSAFE - Thu Oct 23 01:17:56 2025
+[2025-10-23 01:17:57] ✅ Datos guardados: C:\Users\USER\Desktop\aerosafe\data\raw\weather_Bogotá_20251023_0117.json
+[2025-10-23 01:17:57] 🌤️ Clima guardado en DB: Bogotá
+[2025-10-23 01:17:58] ✅ Datos guardados: C:\Users\USER\Desktop\aerosafe\data\raw\weather_Medellín_20251023_0117.json
+[2025-10-23 01:17:58] 🌤️ Clima guardado en DB: Medellín
+[2025-10-23 01:17:58] ✅ Datos guardados: C:\Users\USER\Desktop\aerosafe\data\raw\weather_Cali_20251023_0117.json
+[2025-10-23 01:17:58] 🌤️ Clima guardado en DB: Cali
+[2025-10-23 01:17:59] ✅ Datos guardados: C:\Users\USER\Desktop\aerosafe\data\raw\weather_Cartagena_20251023_0117.json
+[2025-10-23 01:17:59] 🌤️ Clima guardado en DB: Cartagena
+[2025-10-23 01:17:59] ✅ Datos guardados: C:\Users\USER\Desktop\aerosafe\data\raw\weather_Barranquilla_20251023_0117.json
+[2025-10-23 01:17:59] 🌤️ Clima guardado en DB: Barranquilla
+[2025-10-23 01:18:00] ✅ Datos guardados: C:\Users\USER\Desktop\aerosafe\data\raw\weather_Pereira_20251023_0118.json
+[2025-10-23 01:18:00] 🌤️ Clima guardado en DB: Pereira
+[2025-10-23 01:18:00] ✅ Ejecución completada sin errores.
+
+[2025-10-23 01:18:26] =============================
+[2025-10-23 01:18:26] 🚀 Ejecutando AEROSAFE - Thu Oct 23 01:18:26 2025
+[2025-10-23 01:18:27] ✅ Datos guardados: C:\Users\USER\Desktop\aerosafe\data\raw\weather_Bogotá_20251023_0118.json
+[2025-10-23 01:18:27] 🌤️ Clima guardado en DB: Bogotá
+[2025-10-23 01:18:27] ✅ Datos guardados: C:\Users\USER\Desktop\aerosafe\data\raw\weather_Medellín_20251023_0118.json
+[2025-10-23 01:18:27] 🌤️ Clima guardado en DB: Medellín
+[2025-10-23 01:18:28] ✅ Datos guardados: C:\Users\USER\Desktop\aerosafe\data\raw\weather_Cali_20251023_0118.json
+[2025-10-23 01:18:28] 🌤️ Clima guardado en DB: Cali
+[2025-10-23 01:18:28] ✅ Datos guardados: C:\Users\USER\Desktop\aerosafe\data\raw\weather_Cartagena_20251023_0118.json
+[2025-10-23 01:18:28] 🌤️ Clima guardado en DB: Cartagena
+[2025-10-23 01:18:29] ✅ Datos guardados: C:\Users\USER\Desktop\aerosafe\data\raw\weather_Barranquilla_20251023_0118.json
+[2025-10-23 01:18:29] 🌤️ Clima guardado en DB: Barranquilla
+[2025-10-23 01:18:30] ✅ Datos guardados: C:\Users\USER\Desktop\aerosafe\data\raw\weather_Pereira_20251023_0118.json
+[2025-10-23 01:18:30] 🌤️ Clima guardado en DB: Pereira
+[2025-10-23 01:18:30] ✅ Ejecución completada sin errores.
+
+[2025-10-23 01:36:41] ✅ Datos guardados: C:\Users\USER\Desktop\aerosafe\data\raw\weather_Bogotá_20251023_0136.json
+[2025-10-23 01:36:42] ✅ Datos guardados: C:\Users\USER\Desktop\aerosafe\data\raw\weather_Medellín_20251023_0136.json
+[2025-10-23 01:36:44] ✅ Datos guardados: C:\Users\USER\Desktop\aerosafe\data\raw\weather_Cali_20251023_0136.json
+[2025-10-23 01:36:45] ✅ Datos guardados: C:\Users\USER\Desktop\aerosafe\data\raw\weather_Cartagena_20251023_0136.json
+[2025-10-23 01:36:46] ✅ Datos guardados: C:\Users\USER\Desktop\aerosafe\data\raw\weather_Barranquilla_20251023_0136.json
+[2025-10-23 01:36:48] ✅ Datos guardados: C:\Users\USER\Desktop\aerosafe\data\raw\weather_Pereira_20251023_0136.json
+[2025-10-23 01:39:38] ✅ Datos guardados: C:\Users\USER\Desktop\aerosafe\data\raw\weather_Bogotá_20251023_0139.json

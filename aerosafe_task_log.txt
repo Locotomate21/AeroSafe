@@ -1,0 +1,15 @@
+============================= 
+Ejecutando AEROSAFE - jue. 23/10/2025  1:15:53,57 
+DEBUG: API KEY = a45d492668dceb132d0d67106b718810
+Tarea completada a las  1:16:04,40 
+ 
+============================= 
+Ejecutando AEROSAFE - jue. 23/10/2025  1:17:55,94 
+DEBUG: API KEY = a45d492668dceb132d0d67106b718810
+Tarea completada a las  1:18:00,58 
+ 
+============================= 
+Ejecutando AEROSAFE - jue. 23/10/2025  1:18:25,62 
+DEBUG: API KEY = a45d492668dceb132d0d67106b718810
+Tarea completada a las  1:18:30,45 
+ 

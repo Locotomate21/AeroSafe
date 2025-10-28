@@ -1,0 +1,13 @@
+{
+    "ciudad": "Cartagena",
+    "pais": "CO",
+    "fecha": "2025-10-23T01:36:45.527641",
+    "temperatura": 26.79,
+    "humedad": 89,
+    "presion": 1008,
+    "viento": 6.26,
+    "visibilidad": 10000,
+    "descripcion": "nubes dispersas",
+    "codigo_aeropuerto": null,
+    "timestamp": "2025-10-23T01:36:45.527651"
+}
