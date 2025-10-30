@@ -1,0 +1,11 @@
+{
+    "ciudad": "Bogotá",
+    "pais": "CO",
+    "fecha": "2025-10-20T17:42:51.941233",
+    "temperatura": 17.04,
+    "humedad": 61,
+    "presion": 1014,
+    "viento": 1.34,
+    "visibilidad": 10000,
+    "descripcion": "muy nuboso"
+}

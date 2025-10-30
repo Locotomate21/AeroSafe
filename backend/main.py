@@ -1,24 +1,52 @@
-# backend/main.py
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from backend.routes.risk_routes import router as risk_router
+import uvicorn
 
-app = FastAPI(title="AeroSafe API", version="1.0")
+from api.routes.risk_routes import router as risk_router
+from api.routes.weather_routes import router as weather_router
+from core.config import settings
+from core.logging import setup_logging
+from database.connection import init_db
 
-# Configurar CORS (para permitir peticiones desde el frontend)
+# Setup logging
+setup_logging()
+
+# Create FastAPI app
+app = FastAPI(
+    title=settings.PROJECT_NAME,
+    version=settings.VERSION,
+    description="API de predicción de riesgo meteorológico para aviación"
+)
+
+# CORS Middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # puedes cambiarlo a ["http://localhost:3000"] más adelante
+    allow_origins=settings.get_origins_list(),  # Usar método para obtener lista
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Registrar rutas
-app.include_router(risk_router, prefix="/api/risk", tags=["Risk Evaluation"])
+# Include routers
+app.include_router(risk_router, prefix="/api/v1/risk", tags=["risk"])
+app.include_router(weather_router, prefix="/api/v1/weather", tags=["weather"])
 
-# Ruta base de prueba
 @app.get("/")
-def root():
-    return {"message": "🚀 AeroSafe API funcionando correctamente"}
+async def root():
+    return {
+        "message": settings.PROJECT_NAME,
+        "version": settings.VERSION,
+        "docs": "/docs"
+    }
 
+@app.get("/health")
+async def health_check():
+    return {"status": "healthy", "service": "AeroSafe API"}
+
+if __name__ == "__main__":
+    uvicorn.run(
+        "main:app",
+        host=settings.HOST,
+        port=settings.PORT,
+        reload=settings.DEBUG
+    )

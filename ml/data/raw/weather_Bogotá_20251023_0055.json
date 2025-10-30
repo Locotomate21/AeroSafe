@@ -1,0 +1,13 @@
+{
+    "ciudad": "Bogotá",
+    "pais": "CO",
+    "fecha": "2025-10-23T00:55:06.117593",
+    "temperatura": 11.83,
+    "humedad": 98,
+    "presion": 1018,
+    "viento": 1.34,
+    "visibilidad": 10000,
+    "descripcion": "nubes dispersas",
+    "codigo_aeropuerto": "SKBO",
+    "timestamp": "2025-10-23T00:55:06.117610"
+}

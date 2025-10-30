@@ -1,0 +1,11 @@
+{
+    "ciudad": "Pereira",
+    "pais": "CO",
+    "fecha": "2025-10-20T18:45:34.225068",
+    "temperatura": 23.56,
+    "humedad": 69,
+    "presion": 1011,
+    "viento": 1.79,
+    "visibilidad": 10000,
+    "descripcion": "muy nuboso"
+}

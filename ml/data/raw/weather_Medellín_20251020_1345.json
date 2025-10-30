@@ -1,0 +1,11 @@
+{
+    "ciudad": "Medellín",
+    "pais": "CO",
+    "fecha": "2025-10-20T18:45:29.194256",
+    "temperatura": 22.99,
+    "humedad": 68,
+    "presion": 1011,
+    "viento": 2.06,
+    "visibilidad": 10000,
+    "descripcion": "muy nuboso"
+}

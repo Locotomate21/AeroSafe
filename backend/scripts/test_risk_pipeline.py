@@ -1,5 +1,3 @@
-# backend/scripts/test_risk_pipeline.py
-
 from datetime import datetime
 from backend.models.weather_model import WeatherData
 from backend.services.risk_predictor import evaluate_risk

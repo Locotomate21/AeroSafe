@@ -1,0 +1,34 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: aerosafe-backend
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=sqlite:///./weather.db
+      - MODEL_PATH=/app/ml/data/models/risk_model.pkl
+      - SCALER_PATH=/app/ml/data/models/scaler.pkl
+      - ENCODER_PATH=/app/ml/data/models/label_encoder.pkl
+      - WEATHER_API_KEY=${WEATHER_API_KEY:-a45d492668dceb132d0d67106b718810}
+      - HOST=0.0.0.0
+      - PORT=8000
+      - DEBUG=True
+      - ALLOWED_ORIGINS=http://localhost:3000,http://localhost:5173
+    volumes:
+      # Montar código en desarrollo (hot reload)
+      - ./backend:/app/backend
+      # Montar modelos ML (IMPORTANTE)
+      - ./ml:/app/ml
+      # Montar logs
+      - ./logs:/app/logs
+    networks:
+      - aerosafe-network
+
+networks:
+  aerosafe-network:
+    driver: bridge

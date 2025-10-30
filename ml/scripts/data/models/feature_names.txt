@@ -1,0 +1,1 @@
+temperatura,humedad,viento,visibilidad,temp_x_hum,viento_x_vis,risk_score,viento_alto,viento_medio,vis_baja,vis_media,temp_extrema,humedad_extrema

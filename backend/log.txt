@@ -1,0 +1,108 @@
+[2025-10-28 18:55:26] 
+===  Iniciando pipeline AeroSafe ===
+[2025-10-28 18:55:26] == Ejecutando collect_weather_data ==
+[2025-10-28 18:55:27]  Error en collect_weather_data: Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "C:\Users\USER\Desktop\aerosafe\backend\scripts\collect_weather_data.py", line 6, in <module>
+    from backend.utils.weather_data import get_weather
+  File "C:\Users\USER\Desktop\aerosafe\backend\utils\weather_data.py", line 7, in <module>
+    from backend.utils.config import OPENWEATHER_API_KEY, BASE_URL
+ModuleNotFoundError: No module named 'backend.utils.config'
+[2025-10-28 21:42:50] 
+===  Iniciando pipeline AeroSafe ===
+[2025-10-28 21:42:50] == Ejecutando collect_weather_data ==
+[2025-10-28 21:42:51]  Error en collect_weather_data: Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "C:\Users\USER\Desktop\aerosafe\backend\scripts\collect_weather_data.py", line 6, in <module>
+    from backend.utils.weather_data import get_weather
+  File "C:\Users\USER\Desktop\aerosafe\backend\utils\weather_data.py", line 7, in <module>
+    from backend.utils.config import OPENWEATHER_API_KEY, BASE_URL
+ModuleNotFoundError: No module named 'backend.utils.config'
+[2025-10-30 13:05:17] 
+===  Iniciando pipeline AeroSafe ===
+[2025-10-30 13:05:17] == Ejecutando collect_weather_data ==
+[2025-10-30 13:05:20]  Error en collect_weather_data: Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "C:\Users\USER\Desktop\aerosafe\backend\scripts\collect_weather_data.py", line 6, in <module>
+    from backend.utils.weather_data import get_weather
+  File "C:\Users\USER\Desktop\aerosafe\backend\utils\weather_data.py", line 7, in <module>
+    from backend.utils.config import OPENWEATHER_API_KEY, BASE_URL
+ModuleNotFoundError: No module named 'backend.utils.config'
+[2025-10-30 13:14:43] 
+===  Iniciando pipeline AeroSafe ===
+[2025-10-30 13:14:43] == Ejecutando collect_weather_data ==
+[2025-10-30 13:14:43]  Error en collect_weather_data: Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "C:\Users\USER\Desktop\aerosafe\backend\scripts\collect_weather_data.py", line 6, in <module>
+    from backend.utils.weather_data import get_weather
+  File "C:\Users\USER\Desktop\aerosafe\backend\utils\weather_data.py", line 7, in <module>
+    from backend.utils.config import OPENWEATHER_API_KEY, BASE_URL
+ModuleNotFoundError: No module named 'backend.utils.config'
+[2025-10-30 13:14:56] 
+===  Iniciando pipeline AeroSafe ===
+[2025-10-30 13:14:56] == Ejecutando collect_weather_data ==
+[2025-10-30 13:14:57]  Error en collect_weather_data: Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "C:\Users\USER\Desktop\aerosafe\backend\scripts\collect_weather_data.py", line 6, in <module>
+    from backend.utils.weather_data import get_weather
+  File "C:\Users\USER\Desktop\aerosafe\backend\utils\weather_data.py", line 7, in <module>
+    from backend.utils.config import OPENWEATHER_API_KEY, BASE_URL
+ModuleNotFoundError: No module named 'backend.utils.config'
+[2025-10-30 13:22:32] 
+===  Iniciando pipeline AeroSafe ===
+[2025-10-30 13:22:32] == Ejecutando collect_weather_data ==
+[2025-10-30 13:22:32]  Error en collect_weather_data: Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "C:\Users\USER\Desktop\aerosafe\backend\scripts\collect_weather_data.py", line 6, in <module>
+    from backend.utils.weather_data import get_weather
+  File "C:\Users\USER\Desktop\aerosafe\backend\utils\weather_data.py", line 7, in <module>
+    from backend.utils.config import OPENWEATHER_API_KEY, BASE_URL
+ModuleNotFoundError: No module named 'backend.utils.config'
+[2025-10-30 13:23:47] 
+===  Iniciando pipeline AeroSafe ===
+[2025-10-30 13:23:47] == Ejecutando collect_weather_data ==
+[2025-10-30 13:23:47]  Error en collect_weather_data: Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "C:\Users\USER\Desktop\aerosafe\backend\scripts\collect_weather_data.py", line 6, in <module>
+    from backend.utils.weather_data import get_weather
+  File "C:\Users\USER\Desktop\aerosafe\backend\utils\weather_data.py", line 7, in <module>
+    from backend.utils.config import OPENWEATHER_API_KEY, BASE_URL
+ModuleNotFoundError: No module named 'backend.utils.config'
+[2025-10-30 13:24:24] 
+===  Iniciando pipeline AeroSafe ===
+[2025-10-30 13:24:24] == Ejecutando collect_weather_data ==
+[2025-10-30 13:24:24]  Error en collect_weather_data: Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "C:\Users\USER\Desktop\aerosafe\backend\scripts\collect_weather_data.py", line 6, in <module>
+    from backend.utils.weather_data import get_weather
+  File "C:\Users\USER\Desktop\aerosafe\backend\utils\weather_data.py", line 7, in <module>
+    from backend.utils.config import OPENWEATHER_API_KEY, BASE_URL
+ModuleNotFoundError: No module named 'backend.utils.config'
+[2025-10-30 13:24:59] 
+===  Iniciando pipeline AeroSafe ===
+[2025-10-30 13:24:59] == Ejecutando collect_weather_data ==
+[2025-10-30 13:24:59]  Error en collect_weather_data: Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "C:\Users\USER\Desktop\aerosafe\backend\scripts\collect_weather_data.py", line 6, in <module>
+    from backend.utils.weather_data import get_weather
+  File "C:\Users\USER\Desktop\aerosafe\backend\utils\weather_data.py", line 7, in <module>
+    from backend.utils.config import OPENWEATHER_API_KEY, BASE_URL
+ModuleNotFoundError: No module named 'backend.utils.config'
+[2025-10-30 13:24:59]  No se encontraron archivos de dataset.
+[2025-10-30 13:24:59] == Ejecutando test_risk_pipeline ==
+[2025-10-30 13:25:03]  Error en test_risk_pipeline: Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "C:\Users\USER\Desktop\aerosafe\backend\scripts\test_risk_pipeline.py", line 4, in <module>
+    from backend.models.database import SessionLocal, Weather
+ImportError: cannot import name 'SessionLocal' from 'backend.models.database' (C:\Users\USER\Desktop\aerosafe\backend\models\database.py)
+[2025-10-30 13:25:03]  Pipeline completado con xito.

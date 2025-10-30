@@ -1,0 +1,13 @@
+{
+    "ciudad": "Barranquilla",
+    "pais": "CO",
+    "fecha": "2025-10-23T01:00:08.161442",
+    "temperatura": 24.88,
+    "humedad": 94,
+    "presion": 1009,
+    "viento": 2.57,
+    "visibilidad": 10000,
+    "descripcion": "algo de nubes",
+    "codigo_aeropuerto": "SKBQ",
+    "timestamp": "2025-10-23T01:00:08.161452"
+}

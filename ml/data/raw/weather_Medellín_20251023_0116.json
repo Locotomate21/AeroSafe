@@ -1,0 +1,13 @@
+{
+    "ciudad": "Medellín",
+    "pais": "CO",
+    "fecha": "2025-10-23T01:16:01.377175",
+    "temperatura": 16.72,
+    "humedad": 98,
+    "presion": 1015,
+    "viento": 2.24,
+    "visibilidad": 10000,
+    "descripcion": "algo de nubes",
+    "codigo_aeropuerto": "SKRG",
+    "timestamp": "2025-10-23T01:16:01.377193"
+}

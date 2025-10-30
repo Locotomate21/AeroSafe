@@ -27,7 +27,7 @@ print("🚀 ENTRENAMIENTO DE MODELO MEJORADO")
 print("=" * 60)
 
 # --- Cargar dataset ---
-data_path = "data/dataset/weather_risk.csv"
+data_path = "../data/dataset/weather_risk.csv"
 df = pd.read_csv(data_path)
 print(f"\n✅ Dataset cargado: {df.shape}")
 

@@ -1,0 +1,13 @@
+{
+    "ciudad": "Cartagena",
+    "pais": "CO",
+    "fecha": "2025-10-23T00:55:07.646747",
+    "temperatura": 26.79,
+    "humedad": 89,
+    "presion": 1009,
+    "viento": 6.26,
+    "visibilidad": 10000,
+    "descripcion": "lluvia ligera",
+    "codigo_aeropuerto": "SKCG",
+    "timestamp": "2025-10-23T00:55:07.646765"
+}
