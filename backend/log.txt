@@ -106,3 +106,23 @@ ModuleNotFoundError: No module named 'backend.utils.config'
     from backend.models.database import SessionLocal, Weather
 ImportError: cannot import name 'SessionLocal' from 'backend.models.database' (C:\Users\USER\Desktop\aerosafe\backend\models\database.py)
 [2025-10-30 13:25:03]  Pipeline completado con xito.
+[2025-10-30 14:55:24] 
+===  Iniciando pipeline AeroSafe ===
+[2025-10-30 14:55:24] == Ejecutando collect_weather_data ==
+[2025-10-30 14:55:24]  Error en collect_weather_data: Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "C:\Users\USER\Desktop\aerosafe\backend\scripts\collect_weather_data.py", line 6, in <module>
+    from backend.utils.weather_data import get_weather
+  File "C:\Users\USER\Desktop\aerosafe\backend\utils\weather_data.py", line 7, in <module>
+    from backend.utils.config import OPENWEATHER_API_KEY, BASE_URL
+ModuleNotFoundError: No module named 'backend.utils.config'
+[2025-10-30 14:55:24]  No se encontraron archivos de dataset.
+[2025-10-30 14:55:24] == Ejecutando test_risk_pipeline ==
+[2025-10-30 14:55:26]  Error en test_risk_pipeline: Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "C:\Users\USER\Desktop\aerosafe\backend\scripts\test_risk_pipeline.py", line 4, in <module>
+    from backend.models.database import SessionLocal, Weather
+ImportError: cannot import name 'SessionLocal' from 'backend.models.database' (C:\Users\USER\Desktop\aerosafe\backend\models\database.py)
+[2025-10-30 14:55:26]  Pipeline completado con xito.
