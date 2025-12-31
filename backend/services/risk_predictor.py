@@ -1,44 +1,32 @@
-import numpy as np
+from ml.features.build_features import build_features
+from ml.features.adapters.openweather_adapter import openweather_to_raw_df
+from backend.models.risk_model_loader import load_model
+from backend.core.config import settings
 
-def evaluate_risk(weather_data: dict) -> dict:
-    """
-    Evalúa el riesgo de vuelo con base en las condiciones meteorológicas.
-    Devuelve una clasificación: Seguro, Precaución o Peligro.
-    """
 
-    if not weather_data:
-        return {"nivel": "Desconocido", "mensaje": "No hay datos disponibles"}
+class RiskPredictor:
+    def __init__(self):
+        self.model = load_model(settings.ML_MODEL_URI)
 
-    temp = weather_data.get("temperatura", 0)
-    viento = weather_data.get("viento", 0)
-    visibilidad = weather_data.get("visibilidad", 10000)
-    humedad = weather_data.get("humedad", 0)
-    descripcion = weather_data.get("descripcion", "").lower()
+    def predict_from_openweather(self, payload: dict) -> dict:
+        """
+        Predicción oficial AeroSafe ML
+        """
 
-    # --- Regla 1: condiciones severas ---
-    if ("tormenta" in descripcion or "lluvia fuerte" in descripcion or "nieve" in descripcion) \
-        or viento > 25 or visibilidad < 1500:
-        nivel = "Peligro"
-        mensaje = "Condiciones severas detectadas. Aterrizaje o vuelo NO recomendado."
+        # Adapter → raw
+        raw_df = openweather_to_raw_df(payload)
 
-    # --- Regla 2: condiciones regulares ---
-    elif ("lluvia" in descripcion or "nublado" in descripcion or viento > 10 or visibilidad < 4000 or humedad > 85):
-        nivel = "Precaución"
-        mensaje = "Condiciones regulares. Se recomienda evaluación adicional."
+        # Features + schema validation
+        X = build_features(raw_df)
 
-    # --- Regla 3: condiciones seguras ---
-    else:
-        nivel = "Seguro"
-        mensaje = "Condiciones óptimas para vuelo o aterrizaje."
+        # Predicción
+        prediction = self.model.predict(X)[0]
 
-    return {
-        "nivel": nivel,
-        "mensaje": mensaje,
-        "parametros": {
-            "temperatura": temp,
-            "viento": viento,
-            "visibilidad": visibilidad,
-            "humedad": humedad,
-            "descripcion": descripcion
+        return {
+            "riesgo_operacional": int(prediction),
+            "modelo": "aerosafe_ml",
         }
-    }
+
+
+# Instancia única
+risk_predictor = RiskPredictor()

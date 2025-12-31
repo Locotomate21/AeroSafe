@@ -3,7 +3,7 @@ import httpx
 import logging
 from typing import Dict, Optional
 from datetime import datetime, timedelta
-from core.config import settings
+from backend.core.config import settings
 
 logger = logging.getLogger(__name__)
 

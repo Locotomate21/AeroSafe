@@ -1,6 +1,8 @@
 from fastapi import APIRouter, HTTPException, Query
-from services.weather_api_service import weather_api_service
-from services.ml_service import ml_service
+from backend.services.weather_api_service import weather_api_service
+from backend.services.weather_service import get_weather_data
+from backend.models.schemas import WeatherResponse
+from backend.services.ml_service import ml_service
 import logging
 
 router = APIRouter()
@@ -20,19 +22,11 @@ async def get_current_weather(city: str):
         logger.error(f"Error obteniendo clima: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
+
 @router.get("/airport/{icao}")
 async def get_airport_weather(icao: str):
     """
     Obtiene clima de aeropuerto por código ICAO
-    
-    Códigos disponibles:
-    - SKBO: El Dorado (Bogotá)
-    - SKCL: Alfonso Bonilla (Cali)
-    - SKMR: Olaya Herrera (Medellín)
-    - SKRG: José María Córdova (Rionegro)
-    - SKCG: Rafael Núñez (Cartagena)
-    - SKBQ: Palonegro (Bucaramanga)
-    - SKPE: Matecaña (Pereira)
     """
     try:
         weather_data = await weather_api_service.get_airport_weather(icao)
@@ -42,6 +36,7 @@ async def get_airport_weather(icao: str):
     except Exception as e:
         logger.error(f"Error obteniendo clima de aeropuerto: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
+
 
 @router.get("/airport/{icao}/risk")
 async def get_airport_risk(icao: str):
@@ -78,6 +73,7 @@ async def get_airport_risk(icao: str):
         logger.error(f"Error en predicción de aeropuerto: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
+
 @router.get("/forecast/{city}")
 async def get_weather_forecast(
     city: str,
@@ -93,6 +89,7 @@ async def get_weather_forecast(
         logger.error(f"Error obteniendo pronóstico: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
+
 @router.get("/test")
 async def test_endpoint():
     """Endpoint de prueba"""
@@ -100,4 +97,4 @@ async def test_endpoint():
         "status": "ok",
         "message": "Weather routes funcionando",
         "api_key_configured": bool(weather_api_service.api_key)
-    } 
+    }

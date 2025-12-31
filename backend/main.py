@@ -2,11 +2,11 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 
-from api.routes.risk_routes import router as risk_router
-from api.routes.weather_routes import router as weather_router
-from core.config import settings
-from core.logging import setup_logging
-from database.connection import init_db
+from backend.api.routes.risk_routes import router as risk_router
+from backend.api.routes.weather_routes import router as weather_router
+from backend.core.config import settings
+from backend.core.logging import setup_logging
+from backend.database.connection import init_db
 
 # Setup logging
 setup_logging()
@@ -21,7 +21,7 @@ app = FastAPI(
 # CORS Middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.get_origins_list(),  # Usar método para obtener lista
+    allow_origins=settings.get_origins_list(),  # Usa método para obtener lista
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -45,7 +45,7 @@ async def health_check():
 
 if __name__ == "__main__":
     uvicorn.run(
-        "main:app",
+        "backend.main:app",
         host=settings.HOST,
         port=settings.PORT,
         reload=settings.DEBUG
