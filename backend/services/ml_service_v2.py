@@ -1,41 +1,35 @@
 import pandas as pd
+import joblib
 from typing import Optional, Dict, Any
 from backend.models import RiskPrediction
 from backend.features.build_features import build_features
-
+from backend.core.config import settings
+from pathlib import Path
 
 class MLServiceV2:
     def __init__(self, model=None):
-        self.model = model  # mockeado en tests / real en prod
+        # Si no se pasa modelo, cargar desde archivo
+        if model is not None:
+            self.model = model
+        else:
+            model_path = Path(settings.MODEL_PATH)
+            if not model_path.exists():
+                raise FileNotFoundError(f"Modelo no encontrado en {model_path}")
+            self.model = joblib.load(model_path)
 
     def predict(
-        self,
+        self, 
         payload: Dict[str, Any],
         *,
         db=None,
     ) -> Dict[str, Any]:
-        """
-        Predice el riesgo para un solo registro.
-        
-        Args:
-            payload: Diccionario con los datos del API
-            db: Sesión de base de datos opcional para logging
-            
-        Returns:
-            Diccionario con riesgo, confianza y probabilidades
-        """
-        # Convertir payload a DataFrame de una fila
         raw_df = pd.DataFrame([payload])
-        
-        # Usar predict_batch internamente
         result_df = self.predict_batch(
             raw_df,
             ciudad=payload.get("ciudad"),
             icao=payload.get("icao"),
             db=db,
         )
-        
-        # Retornar el primer resultado como diccionario
         return result_df.iloc[0].to_dict()
 
     def predict_batch(
@@ -72,10 +66,10 @@ class MLServiceV2:
                     visibilidad=raw_df.iloc[i].get("visibilidad"),
                 )
                 db.add(record)
-
             db.commit()
 
         return output
 
 
+# Crear instancia global cargando el modelo automáticamente
 ml_service_v2 = MLServiceV2()

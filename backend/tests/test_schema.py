@@ -1,7 +1,7 @@
 import pandas as pd
 import pytest
 
-from features.schema import FEATURES, validate_dataframe
+from backend.features.schema import FEATURES, validate_dataframe  # ← CORREGIDO
 
 
 def test_validate_dataframe_ok():

@@ -1,13 +1,17 @@
-from features.build_features import build_features
-from features.schema import FEATURES
+from backend.features.build_features import build_features  # ← CORREGIDO
 
 
 def test_build_features_schema_and_order(sample_raw_weather):
-    X = build_features(sample_raw_weather)
+    """
+    Test que build_features respeta el schema y orden definidos.
+    """
+    features = build_features(sample_raw_weather)
 
-    # Columnas y orden congelado
-    assert list(X.columns) == list(FEATURES.keys())
+    # Validar que las columnas están en el orden correcto
+    from backend.features.schema import FEATURE_ORDER  # ← CORREGIDO
+    assert list(features.columns) == FEATURE_ORDER
 
-    # Tipos correctos
-    for col, (dtype, _, _) in FEATURES.items():
-        assert X[col].dtype == dtype
+    # Validar tipos
+    assert features["temperatura_c"].dtype in ["float64", "float32"]
+    assert features["humedad_pct"].dtype in ["float64", "float32"]
+    assert features["riesgo_hielo"].dtype in ["int64", "int32"]

@@ -1,21 +1,33 @@
 import pandas as pd
-from features.build_features import build_features
+from backend.features.build_features import build_features  # ← CORREGIDO
 
 
 def test_api_payload_to_features():
-    payload = {
-        "temperatura_c": 20.0,
-        "humedad_pct": 75.0,
-        "presion_hpa": 1010.0,
-        "velocidad_viento_ms": 7.0,
-        "rafaga_viento_ms": 10.0,
-        "visibilidad_m": 6000.0,
-        "precipitacion_mm": 0.0,
-        "nubes_pct": 50.0,
-        "riesgo_hielo": 0,
+    """
+    Test que el payload de API se transforma correctamente en features.
+    """
+    # Payload simulado de OpenWeather API
+    api_payload = {
+        "temp": 22.0,
+        "humidity": 60.0,
+        "pressure": 1013.0,
+        "wind_speed": 5.0,
+        "wind_gust": 8.0,
+        "visibility": 8000.0,
+        "precipitation": 0.0,
+        "clouds": 40.0,
+        "ice_risk": 0,
     }
 
-    df = pd.DataFrame([payload])
-    X = build_features(df)
+    raw_df = pd.DataFrame([api_payload])
+    features = build_features(raw_df)
 
-    assert X.shape == (1, len(payload))
+    # Validar que las columnas se transformaron correctamente
+    assert "temperatura_c" in features.columns
+    assert "humedad_pct" in features.columns
+    assert "presion_hpa" in features.columns
+    assert "velocidad_viento_ms" in features.columns
+
+    # Validar valores
+    assert features["temperatura_c"].iloc[0] == 22.0
+    assert features["humedad_pct"].iloc[0] == 60.0

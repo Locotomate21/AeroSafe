@@ -19,8 +19,9 @@ logger = logging.getLogger(__name__)
 class BatchPredictor:
     """Procesador de predicciones batch."""
     
-    def __init__(self, config: Optional[BatchConfig] = None):
+    def __init__(self, config: Optional[BatchConfig] = None, ml_service=None):
         self.config = config or DEFAULT_CONFIG
+        self.ml_service = ml_service  # Permitir inyectar servicio para tests
         self._setup_logging()
     
     def _setup_logging(self):
@@ -173,8 +174,11 @@ class BatchPredictor:
             ciudad = df['ciudad'].iloc[0] if 'ciudad' in df.columns else None
             icao = df['icao'].iloc[0] if 'icao' in df.columns else None
             
+            # Usar el servicio inyectado o el global
+            service = self.ml_service or ml_service_v2
+            
             # Procesar predicciones
-            results = ml_service_v2.predict_batch(
+            results = service.predict_batch(
                 df,
                 ciudad=ciudad,
                 icao=icao,
