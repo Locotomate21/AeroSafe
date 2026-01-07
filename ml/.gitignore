@@ -1,0 +1,15 @@
+# MLflow
+mlruns/
+mlflow.db
+mlflow.db-shm
+mlflow.db-wal
+
+# Artifacts temporales
+*.pkl
+*.csv
+*.png
+!models/production/*.pkl
+
+# Python
+__pycache__/
+*.pyc
