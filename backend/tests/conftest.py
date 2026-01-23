@@ -77,30 +77,6 @@ def sample_batch_data():
             "nubes": 50.0,
             "hielo": 0,
         },
-        {
-            "ciudad": "Medellín",
-            "temperatura": 22.0,
-            "humedad": 75.0,
-            "presion": 1015.0,
-            "viento": 5.0,
-            "rafaga": 8.0,
-            "visibilidad": 8000.0,
-            "precipitacion": 0.0,
-            "nubes": 40.0,
-            "hielo": 0,
-        },
-        {
-            "ciudad": "Cali",
-            "temperatura": 25.0,
-            "humedad": 70.0,
-            "presion": 1010.0,
-            "viento": 10.0,
-            "rafaga": 15.0,
-            "visibilidad": 5000.0,
-            "precipitacion": 2.0,
-            "nubes": 80.0,
-            "hielo": 0,
-        }
     ])
 
 
