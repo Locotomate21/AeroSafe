@@ -337,12 +337,54 @@ aeropuerto nuevo es cuestión de **recalibrar el umbral**, que necesita
 pocos datos, no de reentrenar desde cero. La brecha que queda tras
 recalibrar (0.450 vs 0.513) es la especificidad local real.
 
+### Generalización a la familia andina ampliada (5 aeropuertos)
+
+El resultado limpio de dos aeropuertos invita a una pregunta más dura:
+¿se sostiene sobre todos los aeropuertos andinos de gran altitud? Se
+probó con cinco (matriz de transferencia 5×5, PR-AUC):
+
+| Aeropuerto | Elev. | Test | Tasa adversa | PR-AUC local | Referencia |
+|---|---|---|---|---|---|
+| SKBO (Bogotá) | 2548 m | 24.509 | 5.4% | 0.312 | válida |
+| SKRG (Rionegro) | 2120 m | 17.483 | 12.6% | 0.530 | válida |
+| SKPS (Pasto) | 1795 m | 14.816 | 11.7% | 0.457 | válida |
+| SKMZ (Manizales) | 2095 m | 11.999 | 24.8% | 0.585 | válida |
+| SKIP (Ipiales) | 2980 m | 15.554 | 2.2% | 0.097 | **débil** (338 eventos) |
+
+**Retención de margen (ranking) hacia cada destino con referencia
+válida:**
+
+- **SKBO ↔ SKRG: ~87%** (los dos grandes, registros continuos de ~175k
+  observaciones, niebla de radiación de valle).
+- SKPS: retiene ~45% desde los grandes.
+- SKMZ: ~2-29%. Niebla **orográfica** persistente (24-43% de las horas) y
+  deriva temporal train/test: es otro régimen físico, no el mismo con
+  otra tasa base.
+- **Retención media entre aeropuertos: 34%.**
+
+**El resultado del 87% NO generaliza a la familia ampliada.** Y esa es la
+conclusión honesta e informativa: *"andino de gran altitud" no es una
+familia homogénea*. Agrupar por elevación es demasiado grueso. Lo que
+determina si la transferencia funciona no es compartir cordillera, sino:
+
+1. **Volumen de datos** en origen y destino (SKIP, con 338 eventos, ni
+   siquiera tiene un modelo local fiable).
+2. **El mismo tipo de niebla** — radiación (SKBO, SKRG) frente a
+   orográfica (SKMZ) son físicas distintas.
+
+Es un resultado más valioso que un "87% en todo": acota **cuándo** se
+puede reutilizar un modelo (entre aeropuertos análogos y con datos) y
+cuándo hay que entrenar uno propio. Que un método declare sus límites es
+más útil que uno que aparenta funcionar siempre.
+
 Reproducir:
 
 ```bash
 python -m ml.scripts.collect_metar_history --icao SKRG --desde 2005
 python -m ml.scripts.build_forecast_dataset --icao SKRG --horizonte 3
 python -m ml.scripts.evaluate_transfer --origen SKBO --destino SKRG
+# matriz completa
+python -m ml.scripts.transfer_matrix --aeropuertos SKBO SKRG SKIP SKPS SKMZ
 ```
 
 ### Calibración de probabilidades
@@ -397,9 +439,10 @@ adaptarlo a un sitio nuevo es cuestión de recalibrar, no de reentrenar.
 
 ### Limitaciones
 
-- **Dos aeropuertos.** SKBO y SKRG, ambos andinos de gran altitud. La
-  transferencia a aeropuertos de perfil distinto (costeros: SKCG, SKBQ)
-  está sin probar y probablemente sea peor.
+- **Cinco aeropuertos, todos andinos.** SKBO, SKRG, SKPS, SKMZ, SKIP. La
+  transferencia es fuerte solo entre los dos grandes y ricos en datos
+  (SKBO, SKRG); degrada hacia los demás. A aeropuertos de perfil distinto
+  (costeros: SKCG, SKBQ) está sin probar y se espera peor aún.
 - **Solo dos fenómenos.** Niebla y tormenta, que son los que dominan en
   El Dorado. No cubre riesgo por viento (irrelevante en SKBO: 1 obs
   >25 kt en 2 años) ni engelamiento.

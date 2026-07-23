@@ -1,0 +1,5 @@
+outs:
+- md5: 983018fa4ac90cf529f541cfeed54fcb
+  size: 17879184
+  hash: md5
+  path: metar_skip_2005_2026.csv
