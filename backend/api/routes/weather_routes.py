@@ -2,8 +2,7 @@ from fastapi import APIRouter, HTTPException, Query, Depends
 from typing import Optional
 import logging
 
-# 🔧 CORREGIDO: Sin 'backend.' porque ya estamos en backend/api/routes/
-from backend.services.weather_service import get_weather_data
+from services.weather_service import get_weather_data
 from models.schemas import WeatherResponse
 from api.dependencies import validate_icao_code, validate_city_format
 

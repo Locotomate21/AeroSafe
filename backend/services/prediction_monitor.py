@@ -1,5 +1,5 @@
-from backend.database.connection import SessionLocal
-from backend.models.database import RiskPrediction
+from database.connection import SessionLocal
+from models.models import RiskPrediction
 
 
 def log_prediction(

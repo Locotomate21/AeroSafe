@@ -8,9 +8,9 @@ from datetime import datetime
 from typing import Optional, List
 from sqlalchemy.orm import Session
 
-from backend.services.ml_service_v2 import ml_service_v2
-from backend.database import SessionLocal
-from backend.batch.batch_config import BatchConfig, DEFAULT_CONFIG
+from services.ml_service_v2 import ml_service_v2
+from database import SessionLocal
+from batch.batch_config import BatchConfig, DEFAULT_CONFIG
 
 
 logger = logging.getLogger(__name__)

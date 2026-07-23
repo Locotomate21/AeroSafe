@@ -1,6 +1,6 @@
 from sqlalchemy import Column, Integer, String, Float, DateTime, Boolean, JSON
 from datetime import datetime
-from backend.database import Base  # ← Solo importar, NO redefinir
+from database import Base  # ← Solo importar, NO redefinir
 
 # ❌ ELIMINAR ESTA LÍNEA:
 # Base = declarative_base()

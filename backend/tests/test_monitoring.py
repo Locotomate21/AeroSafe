@@ -1,4 +1,4 @@
-from backend.models.models import RiskPrediction  # ← Asegúrate que esté así
+from models.models import RiskPrediction
 
 
 def test_prediction_is_logged(db_session, ml_service):

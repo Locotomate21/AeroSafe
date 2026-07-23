@@ -3,8 +3,8 @@ import pandas as pd
 import tempfile
 from pathlib import Path
 
-from backend.batch.predict_batch import BatchPredictor
-from backend.batch.batch_config import BatchConfig
+from batch.predict_batch import BatchPredictor
+from batch.batch_config import BatchConfig
 
 
 @pytest.fixture

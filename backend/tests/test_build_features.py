@@ -1,4 +1,4 @@
-from backend.features.build_features import build_features  # ← CORREGIDO
+from features.build_features import build_features
 
 
 def test_build_features_schema_and_order(sample_raw_weather):
@@ -8,7 +8,7 @@ def test_build_features_schema_and_order(sample_raw_weather):
     features = build_features(sample_raw_weather)
 
     # Validar que las columnas están en el orden correcto
-    from backend.features.schema import FEATURE_ORDER  # ← CORREGIDO
+    from features.schema import FEATURE_ORDER
     assert list(features.columns) == FEATURE_ORDER
 
     # Validar tipos

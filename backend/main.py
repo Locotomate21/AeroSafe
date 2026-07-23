@@ -5,9 +5,8 @@ from fastapi.exceptions import RequestValidationError
 import uvicorn
 import logging
 
-# 🔧 CORREGIDO: Imports sin 'backend.' porque ya estamos en backend/
-from backend.api.routes.risk_routes import router as risk_router
-from backend.api.routes.weather_routes import router as weather_router
+from api.routes.risk_routes import router as risk_router
+from api.routes.weather_routes import router as weather_router
 # from api.routes.dashboard_routes import router as dashboard_router  # Descomentar si existe
 from core.config import settings
 from core.logging import setup_logging, get_logger
@@ -160,7 +159,6 @@ async def info():
 
 if __name__ == "__main__":
     uvicorn.run(
-        "main:app",  # 🔧 CORREGIDO: Sin 'backend.' cuando ejecutas desde backend/
         host=settings.HOST,
         port=settings.PORT,
         reload=settings.DEBUG,

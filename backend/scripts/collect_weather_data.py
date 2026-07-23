@@ -3,7 +3,7 @@ import json
 import os
 import csv
 from datetime import datetime
-from backend.utils.weather_data import get_weather
+from utils.weather_data import get_weather
 
 # Lista de aeropuertos colombianos
 AIRPORTS = [

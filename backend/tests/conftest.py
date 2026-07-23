@@ -8,13 +8,14 @@ import numpy as np
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-# CORRECCIÓN: Agregar el path ANTES de importar módulos de backend
-ROOT = Path(__file__).resolve().parents[2]  # Sube 2 niveles desde backend/test/conftest.py
-sys.path.insert(0, str(ROOT))  # Usar insert(0) en lugar de append para darle prioridad
+# Agregar backend/ al path ANTES de importar módulos de la aplicación.
+#   conftest.py -> tests/ -> backend/
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
 
-from backend.database import Base
-from backend.services.ml_service_v2 import MLServiceV2
-from backend.models.models import RiskPrediction
+from database import Base
+from services.ml_service_v2 import MLServiceV2
+from models.models import RiskPrediction
 
 
 @pytest.fixture(scope="session")

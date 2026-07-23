@@ -4,8 +4,9 @@ import os
 import sys
 import traceback
 from datetime import datetime
-from backend.utils.config import OPENWEATHER_API_KEY, BASE_URL
-from backend.models.database import SessionLocal, Weather
+from core.config import OPENWEATHER_API_KEY, BASE_URL
+from database.connection import SessionLocal
+from models.models import Weather
 
 # === RUTA GLOBAL DE LOG ===
 LOG_PATH = os.path.join(os.path.dirname(__file__), "..", "..", "log.txt")

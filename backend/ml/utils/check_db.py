@@ -1,4 +1,5 @@
-from backend.models.database import SessionLocal, Weather
+from database.connection import SessionLocal
+from models.models import Weather
 
 db = SessionLocal()
 records = db.query(Weather).all()

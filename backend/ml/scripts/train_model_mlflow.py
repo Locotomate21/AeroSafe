@@ -23,7 +23,7 @@ from sklearn.metrics import (
 # Agregar path para imports
 sys.path.append(str(Path(__file__).resolve().parents[2]))
 
-from backend.features.build_features import build_features
+from features.build_features import build_features
 from ml.config.mlflow_config import (
     MLFLOW_TRACKING_URI,
     MLFLOW_TRACKING_USERNAME,

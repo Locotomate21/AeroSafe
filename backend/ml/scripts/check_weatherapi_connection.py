@@ -1,5 +1,5 @@
 import requests
-from backend.core.config import settings
+from core.config import settings
 
 url = f"{settings.BASE_URL}?q=Bogotá&appid={settings.OPENWEATHER_API_KEY}&units=metric"
 

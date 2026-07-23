@@ -6,8 +6,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.append(str(ROOT))
 
-from backend.batch.predict_batch import BatchPredictor
-from backend.batch.batch_config import BatchConfig
+from batch.predict_batch import BatchPredictor
+from batch.batch_config import BatchConfig
 
 
 def main():

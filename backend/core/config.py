@@ -14,12 +14,15 @@ class Settings(BaseSettings):
     DEBUG: bool = True
     
     # Database
-    # 🔧 Por defecto SQLite, pero puede sobrescribirse con .env para PostgreSQL
+    # Por defecto SQLite, pero puede sobrescribirse con .env para PostgreSQL
     DATABASE_URL: str = "sqlite:///./aerosafe.db"
-    
+
     # ML Models
-    # 🔧 CORREGIDO: Rutas basadas en la estructura real del proyecto
-    BASE_DIR: Path = Path(__file__).resolve().parent.parent.parent  # Raíz del proyecto
+    # BASE_DIR es backend/, la raíz de la aplicación: todo (ml/, data/,
+    # models/, logs/) vive bajo ese directorio, y desde ahí se ejecuta
+    # tanto uvicorn como pytest.
+    #   config.py -> core/ -> backend/
+    BASE_DIR: Path = Path(__file__).resolve().parent.parent
     MODEL_PATH: str = "models/production/model.pkl"
     SCALER_PATH: str = "models/production/scaler.pkl"
     ENCODER_PATH: str = "models/production/label_encoder.pkl"

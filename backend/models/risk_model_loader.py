@@ -1,8 +1,10 @@
+import json
+
 import mlflow
 import mlflow.sklearn
 from mlflow.tracking import MlflowClient
 
-from ml.features.schema_validation import validate_model_schema
+from features.schema_validation import validate_model_schema
 
 
 def load_model(model_uri: str):

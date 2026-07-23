@@ -2,7 +2,7 @@ import logging
 import sys
 from pathlib import Path
 from logging.handlers import RotatingFileHandler
-from backend.core.config import settings
+from core.config import settings
 
 def setup_logging(name: str = __name__) -> logging.Logger:
     """
@@ -15,10 +15,16 @@ def setup_logging(name: str = __name__) -> logging.Logger:
         Logger configurado
     """
     
+    # Resolver LOG_FILE contra BASE_DIR: si no, la ruta relativa del .env
+    # depende del cwd y los logs terminan en sitios distintos según se
+    # arranque uvicorn, pytest o un script de ml/.
+    log_file = Path(settings.LOG_FILE)
+    if not log_file.is_absolute():
+        log_file = settings.BASE_DIR / log_file
+
     # Crear carpeta logs si no existe
-    log_dir = Path(settings.LOG_FILE).parent
-    log_dir.mkdir(parents=True, exist_ok=True)
-    
+    log_file.parent.mkdir(parents=True, exist_ok=True)
+
     # Obtener logger
     logger = logging.getLogger(name)
     
@@ -36,7 +42,7 @@ def setup_logging(name: str = __name__) -> logging.Logger:
     
     # Handler para archivo con rotación
     file_handler = RotatingFileHandler(
-        settings.LOG_FILE,
+        log_file,
         maxBytes=settings.LOG_MAX_BYTES,
         backupCount=settings.LOG_BACKUP_COUNT,
         encoding='utf-8'

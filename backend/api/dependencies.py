@@ -3,8 +3,8 @@ from typing import Optional, Annotated
 from sqlalchemy.orm import Session
 import logging
 
-from backend.core.config import settings
-from backend.database.connection import SessionLocal
+from core.config import settings
+from database.connection import SessionLocal
 
 logger = logging.getLogger(__name__)
 

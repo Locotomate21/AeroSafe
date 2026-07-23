@@ -1,0 +1,30 @@
+# AeroSafe - Dependencias de runtime (API)
+# Instalar: pip install -r requirements.txt
+#
+# Para entrenar modelos:  pip install -r requirements-ml.txt
+# Para correr tests:      pip install -r requirements-dev.txt
+
+# --- Web framework ---
+fastapi==0.119.1
+uvicorn[standard]==0.38.0
+starlette==0.48.0
+
+# --- Configuracion y validacion ---
+pydantic==2.12.3
+pydantic-settings==2.9.1
+python-dotenv==1.1.0
+
+# --- Base de datos ---
+SQLAlchemy==2.0.44
+
+# --- Cliente HTTP (servicios de clima: OpenWeather, METAR/TAF) ---
+httpx==0.28.1
+requests==2.32.5
+
+# --- Inferencia ML ---
+# scikit-learn debe coincidir con la version usada al entrenar el modelo
+# de backend/models/production/, o joblib.load puede fallar.
+scikit-learn==1.7.2
+pandas==2.3.3
+numpy==2.3.4
+joblib==1.5.2

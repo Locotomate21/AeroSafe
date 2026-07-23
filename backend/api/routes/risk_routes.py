@@ -2,9 +2,8 @@ from fastapi import APIRouter, HTTPException, Depends
 from typing import Optional
 import logging
 
-# 🔧 CORREGIDO: Sin 'backend.' y sin duplicados
-from backend.models.schemas import RiskRequest, RiskResponse
-from backend.api.dependencies import get_db
+from models.schemas import RiskRequest, RiskResponse
+from api.dependencies import get_db
 from sqlalchemy.orm import Session
 
 router = APIRouter()

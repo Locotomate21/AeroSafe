@@ -1,4 +1,4 @@
-from backend.services.ml_service_v2 import ml_service_v2
+from services.ml_service_v2 import ml_service_v2
 
 # Asegúrate de que el modelo ya esté cargado en ml_service_v2.model
 if ml_service_v2.model is None:

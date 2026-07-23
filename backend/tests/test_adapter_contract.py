@@ -1,5 +1,5 @@
 import pandas as pd
-from backend.features.build_features import build_features  # ← CORREGIDO
+from features.build_features import build_features
 
 
 def test_api_payload_to_features():

@@ -16,7 +16,7 @@ import sys
 # Agregar path para imports
 sys.path.append(str(Path(__file__).resolve().parents[2]))
 
-from backend.features.build_features import build_features
+from features.build_features import build_features
 
 # Configuración
 DATA_PATH = "data/dataset/weather_risk_aviation.csv"

@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 from typing import List, Optional, Dict
 import logging
 
-from models.database import WeatherRecord, RiskPrediction, Airport
+from models.models import WeatherRecord, RiskPrediction, Airport
 
 logger = logging.getLogger(__name__)
 
