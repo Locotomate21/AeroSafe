@@ -1,10 +1,10 @@
 from sqlalchemy.orm import Session
 from sqlalchemy import desc, and_, func
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import List, Optional, Dict
 import logging
 
-from models.database import WeatherRecord, RiskPrediction, Airport
+from models.models import WeatherRecord, RiskPrediction, Airport
 
 logger = logging.getLogger(__name__)
 
@@ -49,7 +49,7 @@ class WeatherRepository:
         icao: str, 
         hours: int = 24
     ) -> List[WeatherRecord]:
-        cutoff_time = datetime.utcnow() - timedelta(hours=hours)
+        cutoff_time = datetime.now(timezone.utc) - timedelta(hours=hours)
         
         return self.db.query(WeatherRecord).filter(
             and_(
@@ -82,7 +82,7 @@ class WeatherRepository:
         min_wind: float = 40,
         max_visibility: float = 2000
     ) -> List[WeatherRecord]:
-        cutoff_time = datetime.utcnow() - timedelta(hours=hours)
+        cutoff_time = datetime.now(timezone.utc) - timedelta(hours=hours)
         
         return self.db.query(WeatherRecord).filter(
             and_(
@@ -101,7 +101,7 @@ class WeatherRepository:
         icao: str,
         days: int = 7
     ) -> Dict:
-        cutoff_time = datetime.utcnow() - timedelta(days=days)
+        cutoff_time = datetime.now(timezone.utc) - timedelta(days=days)
         
         stats = self.db.query(
             func.avg(WeatherRecord.temperatura).label('temp_avg'),
@@ -140,7 +140,7 @@ class WeatherRepository:
         }
     
     def delete_old_records(self, days: int = 30) -> int:
-        cutoff_date = datetime.utcnow() - timedelta(days=days)
+        cutoff_date = datetime.now(timezone.utc) - timedelta(days=days)
         
         deleted_count = self.db.query(WeatherRecord).filter(
             WeatherRecord.timestamp < cutoff_date
@@ -173,7 +173,7 @@ class WeatherRepository:
         icao: str,
         hours: int = 24
     ) -> List[RiskPrediction]:
-        cutoff_time = datetime.utcnow() - timedelta(hours=hours)
+        cutoff_time = datetime.now(timezone.utc) - timedelta(hours=hours)
         
         return self.db.query(RiskPrediction).filter(
             and_(
@@ -189,7 +189,7 @@ class WeatherRepository:
         icao: str,
         days: int = 7
     ) -> Dict:
-        cutoff_time = datetime.utcnow() - timedelta(days=days)
+        cutoff_time = datetime.now(timezone.utc) - timedelta(days=days)
         
         # Contar por nivel de riesgo
         risk_counts = self.db.query(

@@ -1,5 +1,4 @@
-# backend/tests/test_monitoring.py
-from backend.models.models import RiskPrediction
+from models.models import RiskPrediction
 
 
 def test_prediction_is_logged(db_session, ml_service):
@@ -23,7 +22,7 @@ def test_prediction_is_logged(db_session, ml_service):
 
     assert rows == 1
     
-    # Validaciones adicionales opcionales
+    # Validaciones adicionales
     prediction = db_session.query(RiskPrediction).first()
     assert prediction.ciudad == "Bogotá"
     assert prediction.riesgo == "BAJO"

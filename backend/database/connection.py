@@ -2,8 +2,8 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 # Importar Base desde models/database.py (NO redefinirla aquí)
-from models.database import Base
-from backend.core.config import settings
+from .base import Base
+from core.config import settings
 
 # Crear engine usando configuración
 engine = create_engine(

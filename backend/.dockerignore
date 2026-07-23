@@ -1,0 +1,64 @@
+# Python
+__pycache__
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+*.egg-info/
+dist/
+build/
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# Tests
+.pytest_cache/
+.coverage
+htmlcov/
+*.db
+tests/
+
+# Entrenamiento y datos: no van en la imagen que sirve la API.
+# Los modelos se montan como volumen (ver docker-compose.yml), y el
+# dataset de 5000 filas no pinta nada en un contenedor de inferencia.
+ml/
+data/
+dataset/
+notebooks/
+*.ipynb
+assets/
+
+# Documentation
+*.md
+docs/
+
+# Logs
+*.log
+logs/
+
+# Environment
+.env
+.env.local
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Temporary
+tmp/
+temp/
+*.tmp
+
+# Docker
+Dockerfile
+docker-compose*.yml

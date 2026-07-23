@@ -3,16 +3,11 @@ import json
 import os
 import csv
 from datetime import datetime
-from backend.utils.weather_data import get_weather
+from utils.weather_data import get_weather
 
 # Lista de aeropuertos colombianos
 AIRPORTS = [
     {"city": "Bogotá", "code": "SKBO"},
-    {"city": "Medellín", "code": "SKRG"},
-    {"city": "Cali", "code": "SKCL"},
-    {"city": "Cartagena", "code": "SKCG"},
-    {"city": "Barranquilla", "code": "SKBQ"},
-    {"city": "Pereira", "code": "SKPE"},
 ]
 
 def collect_weather_data():

@@ -1,13 +1,10 @@
-"""
-Tests para el procesamiento batch de predicciones.
-"""
 import pytest
 import pandas as pd
 import tempfile
 from pathlib import Path
 
-from backend.batch.predict_batch import BatchPredictor
-from backend.batch.batch_config import BatchConfig
+from batch.predict_batch import BatchPredictor
+from batch.batch_config import BatchConfig
 
 
 @pytest.fixture
@@ -28,47 +25,10 @@ def temp_dirs():
         yield config
 
 
-@pytest.fixture
-def sample_batch_data():
-    """Crea datos de ejemplo para batch."""
-    return pd.DataFrame([
-        {
-            "ciudad": "Bogotá",
-            "temperatura": 20.0,
-            "humedad": 80.0,
-            "presion": 1013.0,
-            "viento": 7.0,
-            "rafaga": 10.0,
-            "visibilidad": 6000.0,
-            "precipitacion": 0.0,
-            "nubes": 50.0,
-            "hielo": 0,
-        },
-        {
-            "ciudad": "Medellín",
-            "temperatura": 22.0,
-            "humedad": 75.0,
-            "presion": 1015.0,
-            "viento": 5.0,
-            "rafaga": 8.0,
-            "visibilidad": 8000.0,
-            "precipitacion": 0.0,
-            "nubes": 40.0,
-            "hielo": 0,
-        },
-        {
-            "ciudad": "Cali",
-            "temperatura": 25.0,
-            "humedad": 70.0,
-            "presion": 1010.0,
-            "viento": 10.0,
-            "rafaga": 15.0,
-            "visibilidad": 5000.0,
-            "precipitacion": 2.0,
-            "nubes": 80.0,
-            "hielo": 0,
-        }
-    ])
+# sample_batch_data viene de conftest.py (3 filas con nombres canónicos).
+# Antes este módulo redefinía el fixture con 1 sola fila y nombres que no
+# existen en el schema ('rafaga', 'nubes', 'hielo'), tapando al de conftest
+# y contradiciendo sus propios asserts de len(result) == 3.
 
 
 def test_batch_predictor_initialization(temp_dirs):
@@ -82,7 +42,7 @@ def test_batch_predictor_initialization(temp_dirs):
 
 def test_process_single_file(temp_dirs, sample_batch_data, ml_service):
     """Test procesar un archivo individual."""
-    predictor = BatchPredictor(temp_dirs)
+    predictor = BatchPredictor(temp_dirs, ml_service=ml_service)
     
     # Crear archivo de entrada
     input_file = temp_dirs.input_dir / "test_input.csv"
@@ -107,7 +67,7 @@ def test_process_in_chunks(temp_dirs, ml_service):
     """Test procesar datos en chunks."""
     # Crear predictor con chunk_size pequeño
     temp_dirs.chunk_size = 2
-    predictor = BatchPredictor(temp_dirs)
+    predictor = BatchPredictor(temp_dirs, ml_service=ml_service)
     
     # Crear datos grandes
     large_data = pd.DataFrame([
@@ -117,11 +77,11 @@ def test_process_in_chunks(temp_dirs, ml_service):
             "humedad": 80.0,
             "presion": 1013.0,
             "viento": 7.0,
-            "rafaga": 10.0,
+            "rafagas": 10.0,
             "visibilidad": 6000.0,
             "precipitacion": 0.0,
-            "nubes": 50.0,
-            "hielo": 0,
+            "techo_nubes": 2000.0,
+            "riesgo_hielo": 0,
         }
         for i in range(5)
     ])
@@ -139,7 +99,7 @@ def test_process_in_chunks(temp_dirs, ml_service):
 
 def test_process_directory(temp_dirs, sample_batch_data, ml_service):
     """Test procesar múltiples archivos en un directorio."""
-    predictor = BatchPredictor(temp_dirs)
+    predictor = BatchPredictor(temp_dirs, ml_service=ml_service)
     
     # Crear múltiples archivos
     for i in range(3):
@@ -160,7 +120,7 @@ def test_process_directory(temp_dirs, sample_batch_data, ml_service):
 
 def test_invalid_input_format(temp_dirs):
     """Test manejo de formato inválido."""
-    predictor = BatchPredictor(temp_dirs)
+    predictor = BatchPredictor(temp_dirs)  # No necesita ml_service para este test
     
     # Crear archivo con formato no soportado
     invalid_file = temp_dirs.input_dir / "test.txt"
@@ -177,7 +137,7 @@ def test_invalid_input_format(temp_dirs):
 
 def test_missing_columns(temp_dirs, ml_service):
     """Test validación de columnas faltantes."""
-    predictor = BatchPredictor(temp_dirs)
+    predictor = BatchPredictor(temp_dirs, ml_service=ml_service)
     
     # Datos sin columnas requeridas
     invalid_data = pd.DataFrame([
@@ -196,7 +156,7 @@ def test_output_formats(temp_dirs, sample_batch_data, ml_service):
     """Test diferentes formatos de salida."""
     for output_format in ['csv', 'json']:
         temp_dirs.output_format = output_format
-        predictor = BatchPredictor(temp_dirs)
+        predictor = BatchPredictor(temp_dirs, ml_service=ml_service)
         
         input_file = temp_dirs.input_dir / f"test_{output_format}.csv"
         sample_batch_data.to_csv(input_file, index=False)

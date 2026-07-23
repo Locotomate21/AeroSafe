@@ -1,0 +1,21 @@
+# AeroSafe - Dependencias de entrenamiento y experimentacion
+# Instalar: pip install -r requirements-ml.txt
+# Incluye el runtime porque los scripts de entrenamiento reutilizan
+# backend/features/build_features.py
+
+-r requirements.txt
+
+# --- Tracking de experimentos ---
+mlflow==3.9.0
+dagshub>=0.3.35
+
+# --- Versionado de datos y modelos ---
+dvc==3.63.0
+dvc-http==2.32.0
+
+# --- Modelos alternativos ---
+xgboost==3.1.1
+
+# --- Graficas (matriz de confusion, feature importance) ---
+matplotlib==3.10.8
+seaborn>=0.13.2

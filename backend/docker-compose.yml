@@ -1,34 +1,119 @@
-version: '3.8'
+# AeroSafe - Orquestacion local
+#
+# Ejecutar desde backend/:   docker compose up --build
+#
+# Nota sobre rutas: este fichero vive en backend/, que tras la
+# reorganizacion es la raiz de la aplicacion. Antes montaba ./models,
+# ./data y ./ml como si estuviera en la raiz del repositorio, asi que
+# todos los volumenes apuntaban a directorios inexistentes y el
+# contenedor arrancaba sin modelo.
 
 services:
+  # ============================================
+  # Backend API
+  # ============================================
   backend:
     build:
-      context: ./backend
+      context: .
       dockerfile: Dockerfile
     container_name: aerosafe-backend
     restart: unless-stopped
     ports:
       - "8000:8000"
+
+    # Las credenciales se leen de backend/.env, no se escriben aqui.
+    env_file:
+      - .env
+
     environment:
-      - DATABASE_URL=sqlite:///./weather.db
-      - MODEL_PATH=/app/ml/data/models/risk_model.pkl
-      - SCALER_PATH=/app/ml/data/models/scaler.pkl
-      - ENCODER_PATH=/app/ml/data/models/label_encoder.pkl
-      - WEATHER_API_KEY=${WEATHER_API_KEY:-a45d492668dceb132d0d67106b718810}
+      # Rutas dentro del contenedor (WORKDIR=/app)
+      - MODEL_PATH=models/production/model.pkl
+      - SCALER_PATH=models/production/scaler.pkl
+      - ENCODER_PATH=models/production/label_encoder.pkl
+      - FEATURE_NAMES_PATH=models/production/feature_names.txt
       - HOST=0.0.0.0
       - PORT=8000
-      - DEBUG=True
-      - ALLOWED_ORIGINS=http://localhost:3000,http://localhost:5173
+      - LOG_FILE=logs/app.log
+
     volumes:
-      # Montar código en desarrollo (hot reload)
-      - ./backend:/app/backend
-      # Montar modelos ML (IMPORTANTE)
-      - ./ml:/app/ml
-      # Montar logs
+      # Modelos: sin esto el contenedor arranca en modo mock.
+      - ./models:/app/models:ro
+      # Datos de entrada/salida del procesamiento batch.
+      - ./data:/app/data
+      # Logs persistentes fuera del contenedor.
       - ./logs:/app/logs
+
+    networks:
+      - aerosafe-network
+
+    healthcheck:
+      # /health devuelve 503 si el modelo no carga o la BD no responde,
+      # asi que el contenedor se marca unhealthy en vez de aceptar
+      # trafico y responder con predicciones heuristicas.
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # ============================================
+  # PostgreSQL (perfil "postgres")
+  # ============================================
+  # Activar con:  docker compose --profile postgres up
+  # y ajustar DATABASE_URL en .env:
+  #   postgresql://aerosafe:<password>@db:5432/aerosafe
+  db:
+    image: postgres:16-alpine
+    container_name: aerosafe-db
+    restart: unless-stopped
+    profiles: ["postgres"]
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER:-aerosafe}
+      # Sin valor por defecto a proposito. Si no se define en .env,
+      # Postgres se niega a arrancar en vez de quedarse con una password
+      # conocida escrita en el repositorio.
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB:-aerosafe}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    networks:
+      - aerosafe-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-aerosafe}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ============================================
+  # MLflow Tracking (perfil "mlflow")
+  # ============================================
+  # Activar con:  docker compose --profile mlflow up
+  # Interfaz en http://localhost:5000
+  mlflow:
+    image: ghcr.io/mlflow/mlflow:v2.19.0
+    container_name: aerosafe-mlflow
+    restart: unless-stopped
+    profiles: ["mlflow"]
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./mlruns:/mlflow/mlruns
+      - ./mlartifacts:/mlflow/mlartifacts
+    command: >
+      mlflow server
+      --host 0.0.0.0
+      --port 5000
+      --backend-store-uri file:///mlflow/mlruns
+      --default-artifact-root file:///mlflow/mlartifacts
     networks:
       - aerosafe-network
 
 networks:
   aerosafe-network:
     driver: bridge
+
+volumes:
+  postgres_data:
