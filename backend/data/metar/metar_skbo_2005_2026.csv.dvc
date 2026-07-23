@@ -1,0 +1,5 @@
+outs:
+- md5: 09e303df096559ade7141631ccbfb0e6
+  size: 43558894
+  hash: md5
+  path: metar_skbo_2005_2026.csv
