@@ -1,0 +1,173 @@
+"""
+Construye el dataset de PRONOSTICO a partir del historico METAR.
+
+Cambio de problema respecto al modelo anterior. Antes se predecia la
+condicion ACTUAL a partir de variables de la condicion actual, lo que es
+circular (si visibilidad es feature y "hay niebla" es la etiqueta, el
+modelo solo reaprende visibilidad<1000 -> niebla) y ademas inutil (con el
+METAR delante ya sabes que hay niebla).
+
+Aqui la etiqueta es la condicion DENTRO DE N HORAS. Eso:
+
+  - Rompe la circularidad por construccion: el objetivo es una
+    observacion futura, no una funcion de las features.
+  - Tiene valor operacional: un despachador a las 06:00 necesita saber
+    como estara a las 09:00 para decidir combustible de espera o
+    alterno.
+
+Objetivo por defecto: presencia de niebla o tormenta a +3h. A ese
+horizonte el baseline de persistencia solo logra F1 0.30, asi que hay
+margen medible para que el modelo aporte, y sigue siendo fisicamente
+predecible desde una sola observacion.
+
+Puntos delicados que este script trata explicitamente:
+
+  1. La etiqueta se empareja por MARCA DE TIEMPO real (t + N horas), no
+     por posicion de fila. El 5% de las observaciones no son horarias
+     exactas y hay 889 huecos > 3h; emparejar por indice colaria un
+     "futuro" que en realidad esta a 6 o 20 horas.
+
+  2. La particion train/test es TEMPORAL, no aleatoria. Un split
+     aleatorio pondria las 09:00 en train y las 08:00 y 10:00 en test:
+     el modelo memorizaria dias concretos en vez de aprender a
+     pronosticar. Se entrena con el pasado y se evalua con el futuro.
+
+Uso:
+    cd backend
+    python -m ml.scripts.build_forecast_dataset
+    python -m ml.scripts.build_forecast_dataset --horizonte 6 --corte 2022
+"""
+import argparse
+import sys
+from pathlib import Path
+
+import numpy as np
+import pandas as pd
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+
+from features.wx_codes import intensidad_precipitacion  # noqa: E402
+
+BACKEND_DIR = Path(__file__).resolve().parents[2]
+ENTRADA = BACKEND_DIR / "data" / "metar" / "metar_skbo_2005_2026.csv"
+SALIDA_DIR = BACKEND_DIR / "data" / "forecast"
+
+CONDICIONES_ADVERSAS = ("niebla", "tormenta")
+
+# Features disponibles en el instante t para pronosticar t+N.
+#
+# NO se incluye 'descripcion': es la variable de la que se deriva la
+# etiqueta. Incluirla reintroduciria la circularidad por la puerta de
+# atras (el modelo veria la niebla actual, muy correlacionada con la
+# niebla de dentro de 1-3h). Se conserva solo para calcular la etiqueta y
+# las features de persistencia/tendencia, no como predictor directo.
+FEATURES_BASE = [
+    "temperatura", "punto_rocio", "humedad", "viento", "rafagas",
+    "direccion_viento", "visibilidad", "presion", "techo_nubes",
+    "viento_cruzado", "altitud_densidad",
+    "hora", "mes", "es_noche",
+]
+
+
+def es_adverso(descripcion: pd.Series) -> pd.Series:
+    return descripcion.isin(CONDICIONES_ADVERSAS).astype(int)
+
+
+def construir(df: pd.DataFrame, horizonte: int) -> pd.DataFrame:
+    """
+    Empareja cada observacion con la de horizonte horas despues.
+
+    Se hace con un merge por timestamp exacto, no con shift(): shift
+    asume filas equiespaciadas y aqui no lo estan.
+    """
+    df = df.sort_values("timestamp").drop_duplicates("timestamp").reset_index(drop=True)
+
+    # Precipitacion como escala ordinal desde el METAR crudo (la columna
+    # numerica es cero en todo el archivo).
+    df["precip_intensidad"] = df["metar"].apply(intensidad_precipitacion)
+
+    df["adverso"] = es_adverso(df["descripcion"])
+
+    # Tabla del futuro: la etiqueta objetivo indexada por su propio
+    # timestamp, que luego se busca en t + horizonte.
+    futuro = df[["timestamp", "adverso"]].rename(
+        columns={"timestamp": "t_futuro", "adverso": "objetivo"}
+    )
+    df["t_objetivo"] = df["timestamp"] + pd.Timedelta(hours=horizonte)
+
+    emparejado = df.merge(
+        futuro, left_on="t_objetivo", right_on="t_futuro", how="inner"
+    )
+
+    # --- Features de contexto temporal ---
+    # La persistencia (condicion actual) es la senal mas fuerte a corto
+    # plazo; se incluye explicitamente como feature en vez de dejar que
+    # el modelo la infiera.
+    emparejado["adverso_actual"] = emparejado["adverso"]
+
+    # Ciclicas: hora y mes son circulares (23h esta al lado de 0h). Sin
+    # esto el modelo trata la medianoche y el mediodia como los extremos
+    # mas lejanos posibles.
+    emparejado["hora_sin"] = np.sin(2 * np.pi * emparejado["hora"] / 24)
+    emparejado["hora_cos"] = np.cos(2 * np.pi * emparejado["hora"] / 24)
+    emparejado["mes_sin"] = np.sin(2 * np.pi * emparejado["mes"] / 12)
+    emparejado["mes_cos"] = np.cos(2 * np.pi * emparejado["mes"] / 12)
+
+    # Spread temperatura-rocio: proxy directo de saturacion, y por tanto
+    # de formacion de niebla. Cuando se acerca a cero, el aire esta
+    # saturado.
+    emparejado["spread_t_td"] = emparejado["temperatura"] - emparejado["punto_rocio"]
+
+    columnas = (
+        FEATURES_BASE
+        + ["precip_intensidad", "adverso_actual",
+           "hora_sin", "hora_cos", "mes_sin", "mes_cos", "spread_t_td"]
+        + ["objetivo", "timestamp"]
+    )
+    resultado = emparejado[columnas].dropna(subset=FEATURES_BASE + ["objetivo"])
+    return resultado.reset_index(drop=True)
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description="Dataset de pronostico")
+    parser.add_argument("--horizonte", type=int, default=3, help="Horas de anticipacion")
+    parser.add_argument("--corte", type=int, default=2023,
+                        help="Primer anio del conjunto de test (temporal)")
+    parser.add_argument("--entrada", type=Path, default=ENTRADA)
+    args = parser.parse_args()
+
+    print("=" * 72)
+    print(f"DATASET DE PRONOSTICO - niebla/tormenta a +{args.horizonte}h")
+    print("=" * 72)
+
+    if not args.entrada.exists():
+        print(f"\nERROR: falta {args.entrada}. Ejecutar collect_metar_history o dvc pull.")
+        return 1
+
+    df = pd.read_csv(args.entrada, parse_dates=["timestamp"], low_memory=False)
+    print(f"\n  Historico: {len(df):,} observaciones")
+
+    datos = construir(df, args.horizonte)
+    print(f"  Pares (t, t+{args.horizonte}h) validos: {len(datos):,}")
+    print(f"  Tasa de la clase adversa: {datos.objetivo.mean():.2%}")
+
+    # --- Split temporal ---
+    train = datos[datos.timestamp.dt.year < args.corte]
+    test = datos[datos.timestamp.dt.year >= args.corte]
+
+    print(f"\n  Split temporal (corte {args.corte}):")
+    print(f"    train: {len(train):>8,d}  ({train.timestamp.dt.year.min()}-{train.timestamp.dt.year.max()})  "
+          f"adversos {train.objetivo.mean():.2%}")
+    print(f"    test : {len(test):>8,d}  ({test.timestamp.dt.year.min()}-{test.timestamp.dt.year.max()})  "
+          f"adversos {test.objetivo.mean():.2%}")
+
+    SALIDA_DIR.mkdir(parents=True, exist_ok=True)
+    ruta = SALIDA_DIR / f"forecast_skbo_h{args.horizonte}.csv"
+    datos.to_csv(ruta, index=False, encoding="utf-8")
+    print(f"\n  Escrito en {ruta.relative_to(BACKEND_DIR)}")
+    print(f"\n  Siguiente: python -m ml.scripts.train_forecast --horizonte {args.horizonte}\n")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

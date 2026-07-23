@@ -1,11 +1,23 @@
-# Model Card — AeroSafe Risk Predictor
+# Model Card — AeroSafe
 
 Documento de referencia sobre qué es y qué no es este modelo. Escrito
 para que nadie —incluido su autor dentro de seis meses— le atribuya
 capacidades que no tiene.
 
 **Última actualización:** 23 de julio de 2026
-**Versión del modelo:** production (`models/production/model.pkl`)
+
+Conviven **dos modelos** con propósitos distintos:
+
+| | Clasificador (production) | Pronóstico (forecast) |
+|---|---|---|
+| Fichero | `models/production/model.pkl` | `models/forecast/forecast_h3.pkl` |
+| Datos | 5.000 sintéticos | 175.329 METAR reales de SKBO |
+| Tarea | Riesgo de la condición **actual** | Niebla/tormenta **dentro de 3h** |
+| Etiqueta | Reglas deterministas | Observación futura real |
+| Estado | Legado, con circularidad (§3) | Recomendado (§9) |
+
+El clasificador se documenta abajo por transparencia sobre sus límites.
+El de pronóstico (§9) es el que resuelve el problema de fondo.
 
 ---
 
@@ -215,8 +227,94 @@ pip install -r requirements-ml.txt
 dvc pull                                  # datos y modelos versionados
 python -m ml.scripts.evaluate_model       # evaluación + baselines
 python -m ml.scripts.validate_with_metar --offline
-python -m ml.scripts.train_model_mlflow   # reentrenar
+python -m ml.scripts.train_model_mlflow   # reentrenar el clasificador
 ```
 
 Los experimentos quedan en MLflow (`sqlite:///mlflow.db` en local, o
 DagsHub si se configuran las credenciales en `.env`).
+
+---
+
+## 9. Modelo de pronóstico (recomendado)
+
+Resuelve las dos limitaciones del clasificador: la circularidad (§3) y la
+inutilidad de "predecir" una condición que ya se lee en el METAR.
+
+### Tarea
+
+Predecir la **presencia de niebla o tormenta en SKBO dentro de 3 horas**,
+a partir de la observación actual. Clasificación binaria.
+
+- **Datos:** 175.329 observaciones METAR reales del IEM (2005-2026),
+  emparejadas (t → t+3h) por marca de tiempo exacta.
+- **Split temporal:** entrena con 2005-2022 (114.407 pares), evalúa con
+  2023-2026 (24.509). Nunca aleatorio: eso filtraría el futuro.
+- **Clase adversa:** 4.51% (desbalance ~1:20), tratada con
+  `class_weight='balanced'` y umbral optimizado en train.
+
+### Rendimiento (conjunto de test 2023-2026)
+
+El rival no es la clase mayoritaria sino la **persistencia** ("dentro de
+3h habrá lo mismo que ahora"), que es lo que asume un despachador sin
+modelo.
+
+| Métrica | Persistencia | Modelo | |
+|---|---|---|---|
+| F1 | 0.216 | **0.344** | +0.128 |
+| Recall | 0.220 | **0.412** | +0.191 |
+| Precision | 0.212 | 0.296 | +0.084 |
+| PR-AUC | 0.054 (tasa base) | **0.312** | ×5.8 |
+
+El modelo **duplica el recall** de la persistencia: detecta el 41% de los
+episodios adversos futuros frente al 22%. PR-AUC 0.312 sobre una tasa
+base de 0.054 es casi 6× mejor que el azar.
+
+### Por qué 3 horas
+
+Barrido de horizontes (F1 modelo vs persistencia):
+
+| Horizonte | Modelo | Persistencia | Margen |
+|---|---|---|---|
+| 1h | 0.515 | 0.498 | +0.017 |
+| **3h** | **0.344** | 0.216 | **+0.128** |
+| 6h | 0.302 | 0.123 | +0.180 |
+
+A 1h la persistencia ya es casi óptima: el modelo no aporta. A 3h y 6h
+gana con claridad. 3h equilibra rendimiento absoluto, margen sobre el
+baseline y utilidad operacional (margen para decidir combustible de
+espera o alterno).
+
+### Qué features pesan, y por qué importa
+
+```
+visibilidad        0.160     hora_sin           0.070
+direccion_viento   0.090     spread_t_td        0.067
+humedad            0.075     adverso_actual     0.067
+```
+
+Dos lecturas relevantes:
+
+- **`precipitacion` ya no domina.** En el clasificador sintético era la
+  feature nº 1 (0.175); aquí no entra en el top 10. Confirma que su
+  protagonismo anterior era un artefacto del generador, no señal real.
+- **`adverso_actual` (la persistencia) pesa solo 0.067.** El modelo no se
+  limita a copiar el presente: aprende del ciclo diario (`hora_sin`), la
+  saturación (`spread_t_td`) y la advección (`direccion_viento`).
+
+### Limitaciones
+
+- **Un solo aeropuerto.** Solo SKBO. La generalización a otros aeródromos
+  está sin probar (SKRG sería el primer test).
+- **Sin calibración de probabilidades.** El score es la fracción de votos
+  del bosque.
+- **Solo dos fenómenos.** Niebla y tormenta, que son los que dominan en
+  El Dorado. No cubre riesgo por viento (irrelevante en SKBO: 1 obs
+  >25 kt en 2 años) ni engelamiento.
+
+### Reproducir
+
+```bash
+cd backend
+python -m ml.scripts.build_forecast_dataset --horizonte 3
+python -m ml.scripts.train_forecast --horizonte 3
+```
