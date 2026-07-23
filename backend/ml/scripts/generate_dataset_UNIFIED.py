@@ -4,15 +4,29 @@ Genera dataset con 3 clases de riesgo: BAJO, MODERADO, ALTO
 30+ variables aeronáuticas realistas
 
 """
-import pandas as pd
-import numpy as np
-import random
-from datetime import datetime
 import os
+import random
+import sys
+from datetime import datetime
+from pathlib import Path
+
+import numpy as np
+import pandas as pd
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+
+# Se reutilizan el catalogo y la seleccion de cabecera de la aplicacion.
+# Duplicar esta logica aqui es exactamente como se genero el desajuste
+# entre entrenamiento e inferencia que hubo que corregir.
+from features.airports import cabecera_activa, catalogo  # noqa: E402
 
 # Seed para reproducibilidad
 np.random.seed(42)
 random.seed(42)
+
+# Aeropuertos reales sobre los que se simula. Antes se sorteaban rumbos
+# de una lista arbitraria y la altitud de otra, sin relacion entre si.
+_AEROPUERTOS = sorted(catalogo().values(), key=lambda a: a.icao)
 
 # Configuración
 N_SAMPLES = 5000
@@ -319,7 +333,20 @@ def generate_realistic_aviation_weather():
     
     # Variables adicionales
     wind_direction = random.randint(0, 359)
-    runway_heading = random.choice([90, 180, 270, 0, 45, 135, 225, 315])
+
+    # Se toma un aeropuerto real del catalogo y se elige la cabecera EN
+    # USO segun el viento, con la misma funcion que usa la inferencia
+    # (features/airports.py).
+    #
+    # Antes el rumbo se sorteaba de una lista fija, sin relacion con la
+    # direccion del viento. Eso hacia que 'viento_frente' quedara
+    # simetrico alrededor de cero (media -0.09 en el dataset anterior),
+    # cuando en operacion real es casi siempre positivo: las aeronaves
+    # aterrizan contra el viento. El modelo aprendia una distribucion de
+    # viento de cola que no existe.
+    aeropuerto = random.choice(_AEROPUERTOS)
+    runway_heading = cabecera_activa(wind_direction, aeropuerto)
+
     gust_factor = round(random.uniform(1.1, 1.5), 1)
     gusts = round(wind * gust_factor, 1)
     crosswind = round(calculate_crosswind(wind, wind_direction, runway_heading), 1)
@@ -332,7 +359,10 @@ def generate_realistic_aviation_weather():
     else:
         pressure = random.randint(1000, 1020)
     
-    altitude = random.choice([0, 500, 1000, 2000, 2500])
+    # La altitud es la del aeropuerto elegido arriba, no un sorteo
+    # independiente: antes un aerodromo podia salir con rumbo de una
+    # pista y elevacion de otra.
+    altitude = round(aeropuerto.altitud)
     density_alt = round(calculate_density_altitude(temp, pressure, altitude), 0)
     
     if hum > 90:

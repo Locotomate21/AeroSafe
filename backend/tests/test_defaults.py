@@ -13,8 +13,8 @@ import math
 import pandas as pd
 import pytest
 
+from features.airports import obtener as obtener_aeropuerto
 from features.defaults import (
-    AIRPORTS,
     PERFILES,
     altitud_densidad,
     complete_raw_features,
@@ -119,16 +119,18 @@ def test_reporta_lo_que_imputa():
 
 
 def test_usa_metadata_del_aeropuerto():
-    """El ICAO determina rumbo de pista y elevación reales."""
+    """El ICAO determina la elevación real y las cabeceras disponibles."""
     df, _ = complete_raw_features(pd.DataFrame([PAYLOAD_MINIMO]), icao="SKBO")
+    skbo = obtener_aeropuerto("SKBO")
 
-    assert df["runway_heading"].iloc[0] == AIRPORTS["SKBO"]["runway_heading"]
-    assert df["altitud_aeropuerto"].iloc[0] == AIRPORTS["SKBO"]["altitud"]
+    assert df["altitud_aeropuerto"].iloc[0] == skbo.altitud
+    # El rumbo ya no es fijo: se elige la cabecera contra el viento.
+    assert df["runway_heading"].iloc[0] in (skbo.rumbo_le, skbo.rumbo_he)
 
 
 def test_icao_desconocido_cae_al_defecto():
     df, _ = complete_raw_features(pd.DataFrame([PAYLOAD_MINIMO]), icao="XXXX")
-    assert df["altitud_aeropuerto"].iloc[0] == AIRPORTS["SKBO"]["altitud"]
+    assert df["altitud_aeropuerto"].iloc[0] == obtener_aeropuerto("SKBO").altitud
 
 
 def test_no_pisa_valores_observados():

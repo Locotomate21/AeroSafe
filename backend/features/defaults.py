@@ -28,20 +28,15 @@ import pandas as pd
 # =========================================================================
 # Metadata de aeropuertos
 # =========================================================================
-# runway_heading: rumbo magnetico de la pista principal en grados.
-# altitud: elevacion del aerodromo en metros.
-
-AIRPORTS: Dict[str, Dict[str, float]] = {
-    "SKBO": {"runway_heading": 134.0, "altitud": 2548.0},  # Bogota / El Dorado
-    "SKRG": {"runway_heading": 182.0, "altitud": 2142.0},  # Rionegro / JMC
-    "SKCL": {"runway_heading": 20.0, "altitud": 964.0},    # Cali / Bonilla Aragon
-    "SKBQ": {"runway_heading": 50.0, "altitud": 30.0},     # Barranquilla / Cortissoz
-    "SKCG": {"runway_heading": 19.0, "altitud": 4.0},      # Cartagena / Nunez
-}
-
-# Aeropuerto por defecto cuando no se indica ICAO. AeroSafe se desarrolla
-# contra SKBO, asi que asumir SKBO es menos malo que asumir nivel del mar.
-DEFAULT_AIRPORT = "SKBO"
+# El catalogo vive en features/airports.py, cargado desde
+# data/airports/airports_co.csv (OurAirports + IEM). Antes habia aqui un
+# diccionario escrito a mano con cinco aeropuertos y varios rumbos y
+# elevaciones desviados.
+from features.airports import (  # noqa: E402
+    DEFAULT_AIRPORT,
+    cabecera_activa,
+    obtener as obtener_aeropuerto,
+)
 
 # Perfiles por condicion meteorologica.
 #
@@ -214,12 +209,23 @@ def complete_raw_features(
         return col not in df.columns or df[col].isna().all()
 
     # --- Aeropuerto -------------------------------------------------
-    meta = AIRPORTS.get((icao or DEFAULT_AIRPORT).upper(), AIRPORTS[DEFAULT_AIRPORT])
+    aeropuerto = obtener_aeropuerto(icao)
+
+    if falta("altitud_aeropuerto"):
+        df["altitud_aeropuerto"] = aeropuerto.altitud
+
+    # La direccion del viento se resuelve ANTES que el rumbo de pista,
+    # porque el rumbo depende de ella.
+    if falta("direccion_viento"):
+        df["direccion_viento"] = STATIC_DEFAULTS["direccion_viento"]
 
     if falta("runway_heading"):
-        df["runway_heading"] = meta["runway_heading"]
-    if falta("altitud_aeropuerto"):
-        df["altitud_aeropuerto"] = meta["altitud"]
+        # Cabecera en uso segun el viento, no un rumbo fijo. Fijar uno
+        # solo produce viento de cola en la mitad de los casos, algo que
+        # en operacion real no ocurre porque se cambia de cabecera.
+        df["runway_heading"] = df["direccion_viento"].apply(
+            lambda direccion: cabecera_activa(direccion, aeropuerto)
+        )
 
     # --- Temporales -------------------------------------------------
     momento = momento or datetime.now()
