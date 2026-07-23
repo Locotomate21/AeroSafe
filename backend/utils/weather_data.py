@@ -13,11 +13,6 @@ LOG_PATH = os.path.join(os.path.dirname(__file__), "..", "..", "log.txt")
 # === CIUDADES Y CÓDIGOS DE AEROPUERTO ===
 CITIES = [
     ("Bogotá", "CO", "SKBO"),
-    ("Medellín", "CO", "SKRG"),
-    ("Cali", "CO", "SKCL"),
-    ("Cartagena", "CO", "SKCG"),
-    ("Barranquilla", "CO", "SKBQ"),
-    ("Pereira", "CO", "SKPE"),
 ]
 
 

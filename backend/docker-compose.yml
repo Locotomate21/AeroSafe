@@ -1,34 +1,120 @@
 version: '3.8'
 
 services:
+  # ============================================
+  # Backend API Service
+  # ============================================
   backend:
     build:
-      context: ./backend
+      context: .
       dockerfile: Dockerfile
     container_name: aerosafe-backend
     restart: unless-stopped
     ports:
       - "8000:8000"
     environment:
-      - DATABASE_URL=sqlite:///./weather.db
-      - MODEL_PATH=/app/ml/data/models/risk_model.pkl
-      - SCALER_PATH=/app/ml/data/models/scaler.pkl
-      - ENCODER_PATH=/app/ml/data/models/label_encoder.pkl
-      - WEATHER_API_KEY=${WEATHER_API_KEY:-a45d492668dceb132d0d67106b718810}
+      # Database
+      - DATABASE_URL=${DATABASE_URL:-sqlite:///./aerosafe.db}
+      
+      # API Keys (desde .env, SIN fallback hardcodeado por seguridad)
+      - OPENWEATHER_API_KEY=${OPENWEATHER_API_KEY}
+      - WEATHER_API_KEY=${WEATHER_API_KEY}
+      
+      # ML Models - Rutas dentro del contenedor
+      - MODEL_PATH=/app/models/production/model.pkl
+      - SCALER_PATH=/app/models/production/scaler.pkl
+      - ENCODER_PATH=/app/models/production/label_encoder.pkl
+      - FEATURE_NAMES_PATH=/app/models/production/feature_names.txt
+      
+      # Server
       - HOST=0.0.0.0
       - PORT=8000
-      - DEBUG=True
-      - ALLOWED_ORIGINS=http://localhost:3000,http://localhost:5173
+      - DEBUG=${DEBUG:-true}
+      
+      # CORS
+      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-http://localhost:3000,http://localhost:5173}
+      
+      # Logging
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - LOG_FILE=/app/logs/app.log
+      
     volumes:
-      # Montar código en desarrollo (hot reload)
+      # 🔧 IMPORTANTE: Estructura de volúmenes corregida
+      
+      # Backend code (hot reload en desarrollo)
       - ./backend:/app/backend
-      # Montar modelos ML (IMPORTANTE)
-      - ./ml:/app/ml
-      # Montar logs
+      
+      # Modelos ML (CRÍTICO - estos deben existir)
+      - ./models:/app/models
+      
+      # Data para batch processing
+      - ./data:/app/data
+      
+      # Logs persistentes
       - ./logs:/app/logs
+      
+      # Scripts ML (si necesitas ejecutarlos)
+      - ./ml:/app/ml
+      
     networks:
       - aerosafe-network
+    
+    # Healthcheck para verificar que la API esté funcionando
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # ============================================
+  # PostgreSQL Database (Opcional - para producción)
+  # ============================================
+  # Descomenta si quieres usar PostgreSQL en lugar de SQLite
+  
+  # db:
+  #   image: postgres:15-alpine
+  #   container_name: aerosafe-db
+  #   restart: unless-stopped
+  #   environment:
+  #     - POSTGRES_USER=aerosafe_user
+  #     - POSTGRES_PASSWORD=aerosafe_pass
+  #     - POSTGRES_DB=aerosafe_db
+  #   ports:
+  #     - "5432:5432"
+  #   volumes:
+  #     - postgres_data:/var/lib/postgresql/data
+  #     - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init.sql
+  #   networks:
+  #     - aerosafe-network
+
+  # ============================================
+  # MLflow Tracking Server (Opcional)
+  # ============================================
+  # Descomenta si usas MLflow
+  
+  # mlflow:
+  #   image: ghcr.io/mlflow/mlflow:v2.9.2
+  #   container_name: aerosafe-mlflow
+  #   restart: unless-stopped
+  #   ports:
+  #     - "5000:5000"
+  #   volumes:
+  #     - ./ml/mlruns:/mlflow/mlruns
+  #     - ./ml/mlartifacts:/mlflow/mlartifacts
+  #   command: >
+  #     mlflow server
+  #     --host 0.0.0.0
+  #     --port 5000
+  #     --backend-store-uri file:///mlflow/mlruns
+  #     --default-artifact-root file:///mlflow/mlartifacts
+  #   networks:
+  #     - aerosafe-network
 
 networks:
   aerosafe-network:
     driver: bridge
+
+# Volúmenes persistentes (si usas PostgreSQL)
+# volumes:
+#   postgres_data:
