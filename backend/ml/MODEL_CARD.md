@@ -345,14 +345,61 @@ python -m ml.scripts.build_forecast_dataset --icao SKRG --horizonte 3
 python -m ml.scripts.evaluate_transfer --origen SKBO --destino SKRG
 ```
 
+### Calibración de probabilidades
+
+El modelo base usa `class_weight='balanced'`, que le da buen poder de
+**ordenación** (PR-AUC alto) pero **probabilidades sin sentido**: como
+entrena tratando las clases al 50/50 cuando la real es ~5%, infla los
+scores de la clase minoritaria. Sin calibrar, cuando el bosque vota 0.59
+el evento ocurre el 10% de las veces.
+
+Cuánto de descalibrado (test SKBO 2023-2026, antes de calibrar):
+
+| Score predicho | Frecuencia real | Gap |
+|---|---|---|
+| 0.18 | 0.02 | +0.16 |
+| 0.36 | 0.05 | +0.32 |
+| 0.59 | 0.10 | +0.49 |
+
+El Brier sin calibrar (0.131) es **peor que predecir la tasa base**
+(0.051): las probabilidades son inservibles como tal, solo valen para
+rankear. Es también por qué el umbral de decisión tenía que estar en 0.71
+en vez de 0.5.
+
+**Solución** (`ml/scripts/calibrate_forecast.py`): calibración isotónica
+sobre un tramo temporal reservado (entrena 2005-2020, calibra 2021-2022,
+evalúa 2023-2026), **sin reentrenar** el modelo.
+
+| Métrica | Sin calibrar | Calibrado (isotonic) | |
+|---|---|---|---|
+| Brier | 0.131 | **0.043** | −67% |
+| ECE | 0.231 | **0.008** | −96% |
+| F1 | 0.346 | 0.340 | ≈ igual |
+
+El F1 casi no cambia porque la calibración es monótona: no reordena, solo
+corrige la escala. Tras calibrar, una probabilidad de 0.5 significa ~50%
+de ocurrencia real, que es lo que un despachador necesita para decidir.
+
+**Conexión con la transferencia:** la calibración es específica del sitio,
+igual que el umbral. El modelo de SKBO evaluado sobre SKRG:
+
+| | Brier | ECE |
+|---|---|---|
+| Sin calibrar | 0.146 | 0.228 |
+| Calibrado en SKBO | 0.102 | 0.079 |
+| Calibrado en SKRG | **0.087** | **0.009** |
+
+Calibrar en el aeropuerto de origen ayuda, pero no basta porque las tasas
+base difieren (4.3% vs 12.6%). Con **2 años del aeropuerto destino** para
+recalibrar —sin reentrenar el modelo— la calibración queda casi perfecta.
+Refuerza la conclusión de §9: el modelo aprende física transferible, y
+adaptarlo a un sitio nuevo es cuestión de recalibrar, no de reentrenar.
+
 ### Limitaciones
 
 - **Dos aeropuertos.** SKBO y SKRG, ambos andinos de gran altitud. La
   transferencia a aeropuertos de perfil distinto (costeros: SKCG, SKBQ)
   está sin probar y probablemente sea peor.
-- **Sin calibración de probabilidades.** El score es la fracción de votos
-  del bosque. La transferencia entre aeropuertos evidencia que el umbral
-  necesita recalibración por sitio.
 - **Solo dos fenómenos.** Niebla y tormenta, que son los que dominan en
   El Dorado. No cubre riesgo por viento (irrelevante en SKBO: 1 obs
   >25 kt en 2 años) ni engelamiento.
