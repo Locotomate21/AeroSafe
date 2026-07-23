@@ -1,10 +1,15 @@
-from fastapi import APIRouter, HTTPException, Depends
-from typing import Optional
 import logging
+from datetime import datetime, timedelta, timezone
+from typing import Optional
 
-from models.schemas import RiskRequest, RiskResponse
-from api.dependencies import get_db
+from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy import desc, func
 from sqlalchemy.orm import Session
+
+from api.dependencies import get_db
+from models.models import RiskPrediction
+from models.schemas import RiskRequest, RiskResponse
+from services.ml_service_v2 import RISK_LEVELS
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -42,7 +47,7 @@ async def predict_risk(request: RiskRequest):
         }
     """
     try:
-        logger.info(f"Predicción de riesgo solicitada: {request.dict()}")
+        logger.info(f"Predicción de riesgo solicitada: {request.model_dump()}")
         
         # Importar servicio ML
         from services.ml_service_v2 import predict_risk_from_weather
@@ -151,73 +156,109 @@ async def predict_airport_risk(icao: str):
 
 @router.get("/history")
 async def get_risk_history(
-    limit: int = 10,
-    db: Session = Depends(get_db)
+    limit: int = Query(10, ge=1, le=100, description="Máximo de registros"),
+    icao: Optional[str] = Query(None, description="Filtrar por aeropuerto"),
+    db: Session = Depends(get_db),
 ):
     """
-    Obtiene historial de predicciones de riesgo
-    
-    Args:
-        limit: Número máximo de registros a retornar
-        db: Sesión de base de datos
-        
-    Returns:
-        Lista de predicciones históricas
+    Historial de predicciones de riesgo, de la más reciente a la más antigua.
+
+    Solo aparecen aquí las predicciones que se persistieron (las que se
+    hicieron con una sesión de base de datos), no todas las consultas.
     """
     try:
-        # TODO: Implementar consulta a base de datos
-        # Por ahora retorna datos de ejemplo
-        
+        query = db.query(RiskPrediction)
+
+        if icao:
+            query = query.filter(RiskPrediction.icao == icao.upper().strip())
+
+        total = query.count()
+        registros = (
+            query.order_by(desc(RiskPrediction.timestamp)).limit(limit).all()
+        )
+
         return {
-            "total": 0,
-            "predictions": [],
-            "message": "Historial no implementado aún"
+            "total": total,
+            "returned": len(registros),
+            "predictions": [
+                {
+                    "id": r.id,
+                    "timestamp": r.timestamp.isoformat() if r.timestamp else None,
+                    "icao": r.icao,
+                    "ciudad": r.ciudad,
+                    "riesgo": r.riesgo,
+                    "confianza": r.confianza,
+                    "probabilidades": r.probabilidades,
+                    "condiciones": {
+                        "temperatura": r.temperatura,
+                        "humedad": r.humedad,
+                        "viento": r.viento,
+                        "visibilidad": r.visibilidad,
+                    },
+                }
+                for r in registros
+            ],
         }
-        
+
     except Exception as e:
-        logger.error(f"Error obteniendo historial: {str(e)}")
+        logger.error("Error obteniendo historial: %s", e, exc_info=True)
         raise HTTPException(
             status_code=500,
-            detail=f"Error al obtener historial: {str(e)}"
+            detail="Error al obtener historial",
         )
 
 
 @router.get("/stats")
 async def get_risk_statistics(
-    days: int = 7,
-    db: Session = Depends(get_db)
+    days: int = Query(7, ge=1, le=365, description="Días hacia atrás a analizar"),
+    db: Session = Depends(get_db),
 ):
     """
-    Obtiene estadísticas de predicciones de riesgo
-    
-    Args:
-        days: Número de días a analizar
-        db: Sesión de base de datos
-        
-    Returns:
-        Estadísticas agregadas de riesgo
+    Estadísticas agregadas de las predicciones de los últimos N días.
+
+    La distribución cubre las tres clases del modelo (BAJO, MODERADO,
+    ALTO). Las clases sin registros aparecen en cero, para que el consumidor
+    no tenga que distinguir "no hubo" de "no existe la clase".
     """
     try:
-        # TODO: Implementar análisis estadístico
-        
+        desde = datetime.now(timezone.utc) - timedelta(days=days)
+
+        base = db.query(RiskPrediction).filter(RiskPrediction.timestamp >= desde)
+        total = base.count()
+
+        distribucion = {nivel: 0 for nivel in RISK_LEVELS}
+        for nivel, cuenta in (
+            db.query(RiskPrediction.riesgo, func.count(RiskPrediction.id))
+            .filter(RiskPrediction.timestamp >= desde)
+            .group_by(RiskPrediction.riesgo)
+            .all()
+        ):
+            if nivel in distribucion:
+                distribucion[nivel] = cuenta
+
+        confianza_media = (
+            db.query(func.avg(RiskPrediction.confianza))
+            .filter(RiskPrediction.timestamp >= desde)
+            .scalar()
+        )
+
         return {
             "period_days": days,
-            "total_predictions": 0,
-            "risk_distribution": {
-                "BAJO": 0,
-                "MODERADO": 0,
-                "ALTO": 0,
-                "CRÍTICO": 0
+            "since": desde.isoformat(),
+            "total_predictions": total,
+            "risk_distribution": distribucion,
+            "risk_distribution_pct": {
+                nivel: round(cuenta / total * 100, 1) if total else 0.0
+                for nivel, cuenta in distribucion.items()
             },
-            "average_confidence": 0.0,
-            "message": "Estadísticas no implementadas aún"
+            "average_confidence": round(float(confianza_media), 4) if confianza_media else 0.0,
         }
-        
+
     except Exception as e:
-        logger.error(f"Error obteniendo estadísticas: {str(e)}")
+        logger.error("Error obteniendo estadísticas: %s", e, exc_info=True)
         raise HTTPException(
             status_code=500,
-            detail=f"Error al obtener estadísticas: {str(e)}"
+            detail="Error al obtener estadísticas",
         )
 
 

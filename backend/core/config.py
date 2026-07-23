@@ -1,4 +1,4 @@
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing import Optional
 from pathlib import Path
 
@@ -57,11 +57,12 @@ class Settings(BaseSettings):
     BATCH_ERROR_DIR: str = "data/batch/errors"
     BATCH_ARCHIVE_DIR: str = "data/batch/archive"
     
-    class Config:
-        env_file = ".env"
-        case_sensitive = True
-        extra = "ignore"
-    
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        case_sensitive=True,
+        extra="ignore",
+    )
+
     def get_origins_list(self) -> list[str]:
         """Convierte ALLOWED_ORIGINS string a lista"""
         return [origin.strip() for origin in self.ALLOWED_ORIGINS.split(",")]

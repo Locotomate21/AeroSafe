@@ -1,5 +1,5 @@
 from sqlalchemy import Column, Integer, String, Float, DateTime, Boolean, JSON
-from datetime import datetime
+from datetime import datetime, timezone
 from database import Base  # ← Solo importar, NO redefinir
 
 # ❌ ELIMINAR ESTA LÍNEA:
@@ -18,7 +18,7 @@ class WeatherRecord(Base):
     pais = Column(String(50))
     
     # Timestamp
-    timestamp = Column(DateTime, default=datetime.utcnow, index=True)
+    timestamp = Column(DateTime, default=lambda: datetime.now(timezone.utc), index=True)
     
     # Variables principales
     temperatura = Column(Float)
@@ -38,7 +38,7 @@ class WeatherRecord(Base):
     condicion = Column(String(50), nullable=True)
     
     # Metadata
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
 
 class RiskPrediction(Base):
@@ -52,7 +52,7 @@ class RiskPrediction(Base):
     ciudad = Column(String(100))
     
     # Timestamp
-    timestamp = Column(DateTime, default=datetime.utcnow, index=True)
+    timestamp = Column(DateTime, default=lambda: datetime.now(timezone.utc), index=True)
     
     # Predicción
     riesgo = Column(String(20), index=True)  # Seguro, Precaución, Peligro
@@ -66,7 +66,7 @@ class RiskPrediction(Base):
     visibilidad = Column(Float)
     
     # Metadata
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
 
 class Airport(Base):
@@ -89,7 +89,7 @@ class Airport(Base):
     
     # Metadata
     activo = Column(Boolean, default=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
 
 class Weather(Base):
@@ -101,4 +101,4 @@ class Weather(Base):
     temperature = Column(Float)
     humidity = Column(Integer)
     description = Column(String)
-    timestamp = Column(DateTime, default=datetime.utcnow)
+    timestamp = Column(DateTime, default=lambda: datetime.now(timezone.utc))

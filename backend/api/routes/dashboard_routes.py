@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException, Depends, Query
 from typing import Optional
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from api.dependencies import validate_icao_code, get_db
 from sqlalchemy.orm import Session
@@ -29,7 +29,7 @@ async def get_dashboard_status():
         
         return {
             "status": "operational",
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "version": settings.VERSION,
             "components": {
                 "api": "healthy",
@@ -90,7 +90,7 @@ async def get_airport_status(
                 "location": weather_data.get("location", {}),
             },
             "current_weather": {
-                "timestamp": datetime.utcnow().isoformat(),
+                "timestamp": datetime.now(timezone.utc).isoformat(),
                 "temperatura": weather_data.get("temperatura"),
                 "humedad": weather_data.get("humedad"),
                 "viento": weather_data.get("viento"),
@@ -106,7 +106,7 @@ async def get_airport_status(
             },
             "operational_impact": operational_status,
             "recommendations": risk_prediction.get("recommendations", []),
-            "last_updated": datetime.utcnow().isoformat()
+            "last_updated": datetime.now(timezone.utc).isoformat()
         }
         
     except Exception as e:
@@ -169,7 +169,7 @@ async def get_airport_forecast_dashboard(
 
 @router.get("/alerts")
 async def get_active_alerts(
-    severity: Optional[str] = Query(None, regex="^(LOW|MODERATE|HIGH|CRITICAL)$"),
+    severity: Optional[str] = Query(None, pattern="^(LOW|MODERATE|HIGH|CRITICAL)$"),
     db: Session = Depends(get_db)
 ):
     """
@@ -221,8 +221,8 @@ async def get_system_statistics(
         return {
             "period": {
                 "days": period_days,
-                "start_date": (datetime.utcnow() - timedelta(days=period_days)).isoformat(),
-                "end_date": datetime.utcnow().isoformat()
+                "start_date": (datetime.now(timezone.utc) - timedelta(days=period_days)).isoformat(),
+                "end_date": datetime.now(timezone.utc).isoformat()
             },
             "predictions": {
                 "total": 0,
@@ -315,7 +315,7 @@ async def get_demo_dashboard():
                 "airport": "KJFK",
                 "severity": "MODERATE",
                 "message": "Vientos cruzados reportados",
-                "timestamp": (datetime.utcnow() - timedelta(hours=2)).isoformat()
+                "timestamp": (datetime.now(timezone.utc) - timedelta(hours=2)).isoformat()
             }
         ],
         "statistics_7d": {

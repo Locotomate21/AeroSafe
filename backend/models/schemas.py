@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from typing import Optional, Dict, List, Any
 from datetime import datetime
 
@@ -13,8 +13,7 @@ class RiskRequest(BaseModel):
     presion: Optional[float] = Field(1013, description="Presión atmosférica en hPa")
     condicion: Optional[str] = Field("Unknown", description="Condición meteorológica")
     
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(json_schema_extra={
             "example": {
                 "temperatura": 15.5,
                 "humedad": 85,
@@ -23,7 +22,7 @@ class RiskRequest(BaseModel):
                 "presion": 1013,
                 "condicion": "Tormenta"
             }
-        }
+        })
 
 
 class RiskResponse(BaseModel):
@@ -52,8 +51,7 @@ class RiskResponse(BaseModel):
     )
     warning: Optional[str] = Field(default=None, description="Advertencia cuando model_status != 'ml'")
 
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(json_schema_extra={
             "example": {
                 "riesgo": "ALTO",
                 "confianza": 0.92,
@@ -80,7 +78,7 @@ class RiskResponse(BaseModel):
                 "model_status": "ml",
                 "imputed_features": ["estado_pista", "turbulencia", "techo_nubes"]
             }
-        }
+        })
 
 
 # ==================== WEATHER SCHEMAS ====================
@@ -99,8 +97,7 @@ class WeatherResponse(BaseModel):
     precipitacion: Optional[float] = Field(None, description="Precipitación en mm")
     timestamp: str = Field(..., description="Timestamp de la observación")
     
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(json_schema_extra={
             "example": {
                 "temperatura": 18.5,
                 "humedad": 70,
@@ -114,7 +111,7 @@ class WeatherResponse(BaseModel):
                 "precipitacion": 0,
                 "timestamp": "2024-02-01T12:00:00Z"
             }
-        }
+        })
 
 
 class AirportWeatherResponse(WeatherResponse):
@@ -124,8 +121,7 @@ class AirportWeatherResponse(WeatherResponse):
     elevation: Optional[int] = Field(None, description="Elevación del aeropuerto en pies")
     location: Optional[Dict[str, float]] = Field(None, description="Coordenadas lat/lon")
     
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(json_schema_extra={
             "example": {
                 "icao": "SKBO",
                 "airport_name": "El Dorado International Airport",
@@ -143,7 +139,7 @@ class AirportWeatherResponse(WeatherResponse):
                 "precipitacion": 0,
                 "timestamp": "2024-02-01T12:00:00Z"
             }
-        }
+        })
 
 
 class METARResponse(BaseModel):
@@ -159,8 +155,7 @@ class METARResponse(BaseModel):
     qnh: Optional[float] = None
     nubes: Optional[List[Dict[str, Any]]] = None
     
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(json_schema_extra={
             "example": {
                 "icao": "SKBO",
                 "raw_metar": "METAR SKBO 011200Z 04008KT 9999 FEW020 SCT250 22/14 Q1018",
@@ -176,7 +171,7 @@ class METARResponse(BaseModel):
                     {"type": "SCT", "height": 25000}
                 ]
             }
-        }
+        })
 
 
 class TAFResponse(BaseModel):
@@ -187,8 +182,7 @@ class TAFResponse(BaseModel):
     valid_period: Dict[str, str]
     forecast_periods: List[Dict[str, Any]]
     
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(json_schema_extra={
             "example": {
                 "icao": "SKBO",
                 "raw_taf": "TAF SKBO 011200Z 0112/0212 04008KT 9999 FEW020 SCT250",
@@ -207,7 +201,7 @@ class TAFResponse(BaseModel):
                     }
                 ]
             }
-        }
+        })
 
 
 class ForecastResponse(BaseModel):
@@ -216,8 +210,7 @@ class ForecastResponse(BaseModel):
     forecast_days: int
     forecasts: List[Dict[str, Any]]
     
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(json_schema_extra={
             "example": {
                 "location": "Bogotá,CO",
                 "forecast_days": 3,
@@ -232,7 +225,7 @@ class ForecastResponse(BaseModel):
                     }
                 ]
             }
-        }
+        })
 
 
 # ==================== DASHBOARD SCHEMAS ====================
