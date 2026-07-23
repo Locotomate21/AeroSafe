@@ -1,0 +1,5 @@
+outs:
+- md5: 6b3cd41d798f339645c65dc3f3da5034
+  size: 42519633
+  hash: md5
+  path: metar_skrg_2005_2026.csv

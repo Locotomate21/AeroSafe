@@ -51,8 +51,8 @@ CORTE_TEST = 2023
 NO_FEATURES = {"objetivo", "timestamp"}
 
 
-def cargar(horizonte: int):
-    ruta = FORECAST_DIR / f"forecast_skbo_h{horizonte}.csv"
+def cargar(horizonte: int, icao: str = "skbo"):
+    ruta = FORECAST_DIR / f"forecast_{icao.lower()}_h{horizonte}.csv"
     if not ruta.exists():
         print(f"ERROR: falta {ruta}. Ejecutar build_forecast_dataset primero.")
         sys.exit(1)
@@ -116,6 +116,7 @@ def imprimir(res: dict) -> None:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Entrena el pronostico")
+    parser.add_argument("--icao", default="SKBO")
     parser.add_argument("--horizonte", type=int, default=3)
     parser.add_argument("--no-mlflow", action="store_true")
     args = parser.parse_args()
@@ -124,7 +125,7 @@ def main() -> int:
     print(f"PRONOSTICO DE NIEBLA/TORMENTA A +{args.horizonte}h - ENTRENAMIENTO")
     print("=" * 72)
 
-    train, test, features = cargar(args.horizonte)
+    train, test, features = cargar(args.horizonte, args.icao)
     print(f"\n  train: {len(train):,} ({train.objetivo.mean():.2%} adversos)  "
           f"test: {len(test):,} ({test.objetivo.mean():.2%} adversos)")
     print(f"  features: {len(features)}")
@@ -201,8 +202,8 @@ def main() -> int:
 
     # --- Guardar ---
     MODEL_DIR.mkdir(parents=True, exist_ok=True)
-    joblib.dump(modelo, MODEL_DIR / f"forecast_h{args.horizonte}.pkl")
-    (MODEL_DIR / f"features_h{args.horizonte}.txt").write_text(
+    joblib.dump(modelo, MODEL_DIR / f"forecast_{args.icao.lower()}_h{args.horizonte}.pkl")
+    (MODEL_DIR / f"features_{args.icao.lower()}_h{args.horizonte}.txt").write_text(
         "\n".join(features), encoding="utf-8"
     )
     print(f"\n  Modelo guardado en {MODEL_DIR.relative_to(BACKEND_DIR)}/")
@@ -215,7 +216,8 @@ def main() -> int:
 
             mlflow.set_tracking_uri(MLFLOW_TRACKING_URI)
             mlflow.set_experiment("aerosafe-pronostico")
-            with mlflow.start_run(run_name=f"forecast_h{args.horizonte}"):
+            with mlflow.start_run(run_name=f"forecast_{args.icao.lower()}_h{args.horizonte}"):
+                mlflow.log_param("icao", args.icao)
                 mlflow.log_param("horizonte_h", args.horizonte)
                 mlflow.log_param("n_train", len(train))
                 mlflow.log_param("n_test", len(test))

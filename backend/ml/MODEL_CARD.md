@@ -301,12 +301,58 @@ Dos lecturas relevantes:
   limita a copiar el presente: aprende del ciclo diario (`hora_sin`), la
   saturación (`spread_t_td`) y la advección (`direccion_viento`).
 
+### Generalización a otro aeropuerto (SKBO → SKRG)
+
+Se probó si el modelo entrenado **solo con SKBO** sirve para **SKRG**
+(Rionegro) sin reentrenar. Es la prueba de si aprendió física atmosférica
+o memorizó El Dorado. SKRG es un buen primer caso: también andino de gran
+altitud (2.120 m), pero con **3× más niebla** (13.7% frente a 4.8%).
+
+Evaluado sobre el test de SKRG 2023-2026 (17.483 pares), comparando tres
+cosas:
+
+| | Persistencia | Transfer SKBO→SKRG | Local SKRG |
+|---|---|---|---|
+| F1 | 0.318 | 0.392 | 0.513 |
+| PR-AUC | 0.126 (base) | **0.464** | 0.530 |
+| Precision | 0.314 | 0.653 | 0.458 |
+| Recall | 0.322 | 0.281 | 0.583 |
+
+**Hay que separar dos preguntas distintas:**
+
+- **¿Ordena bien el riesgo?** Sí. En PR-AUC (independiente del umbral) la
+  transferencia retiene el **84%** del margen que logra un modelo local
+  sobre la tasa base. El modelo de SKBO ordena los episodios de SKRG casi
+  tan bien como uno entrenado allí.
+- **¿Está bien calibrado su umbral?** No. Con el umbral de SKBO, la
+  transferencia es demasiado conservadora en SKRG (precision 0.65,
+  recall 0.28): predice pocos eventos porque SKRG tiene mucha más niebla
+  de la que el modelo esperaba. Reajustando **solo el umbral** con datos
+  de SKRG —sin reentrenar el modelo— el F1 sube de 0.392 a **0.450**,
+  cerrando la mitad de la brecha con el modelo local.
+
+**Conclusión:** el modelo aprendió señal atmosférica genuinamente
+transferible, no solo peculiaridades de El Dorado. Adaptarlo a un
+aeropuerto nuevo es cuestión de **recalibrar el umbral**, que necesita
+pocos datos, no de reentrenar desde cero. La brecha que queda tras
+recalibrar (0.450 vs 0.513) es la especificidad local real.
+
+Reproducir:
+
+```bash
+python -m ml.scripts.collect_metar_history --icao SKRG --desde 2005
+python -m ml.scripts.build_forecast_dataset --icao SKRG --horizonte 3
+python -m ml.scripts.evaluate_transfer --origen SKBO --destino SKRG
+```
+
 ### Limitaciones
 
-- **Un solo aeropuerto.** Solo SKBO. La generalización a otros aeródromos
-  está sin probar (SKRG sería el primer test).
+- **Dos aeropuertos.** SKBO y SKRG, ambos andinos de gran altitud. La
+  transferencia a aeropuertos de perfil distinto (costeros: SKCG, SKBQ)
+  está sin probar y probablemente sea peor.
 - **Sin calibración de probabilidades.** El score es la fracción de votos
-  del bosque.
+  del bosque. La transferencia entre aeropuertos evidencia que el umbral
+  necesita recalibración por sitio.
 - **Solo dos fenómenos.** Niebla y tormenta, que son los que dominan en
   El Dorado. No cubre riesgo por viento (irrelevante en SKBO: 1 obs
   >25 kt en 2 años) ni engelamiento.

@@ -49,7 +49,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from features.wx_codes import intensidad_precipitacion  # noqa: E402
 
 BACKEND_DIR = Path(__file__).resolve().parents[2]
-ENTRADA = BACKEND_DIR / "data" / "metar" / "metar_skbo_2005_2026.csv"
+METAR_DIR = BACKEND_DIR / "data" / "metar"
 SALIDA_DIR = BACKEND_DIR / "data" / "forecast"
 
 CONDICIONES_ADVERSAS = ("niebla", "tormenta")
@@ -128,23 +128,35 @@ def construir(df: pd.DataFrame, horizonte: int) -> pd.DataFrame:
     return resultado.reset_index(drop=True)
 
 
+def _entrada_por_defecto(icao: str) -> Path:
+    """Localiza el historico de un aeropuerto sin fijar los anios."""
+    patron = sorted(METAR_DIR.glob(f"metar_{icao.lower()}_*.csv"))
+    if patron:
+        return patron[-1]
+    return METAR_DIR / f"metar_{icao.lower()}_2005_2026.csv"
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Dataset de pronostico")
+    parser.add_argument("--icao", default="SKBO", help="Aeropuerto")
     parser.add_argument("--horizonte", type=int, default=3, help="Horas de anticipacion")
     parser.add_argument("--corte", type=int, default=2023,
                         help="Primer anio del conjunto de test (temporal)")
-    parser.add_argument("--entrada", type=Path, default=ENTRADA)
+    parser.add_argument("--entrada", type=Path, default=None)
     args = parser.parse_args()
 
+    icao = args.icao.lower()
+    entrada = args.entrada or _entrada_por_defecto(icao)
+
     print("=" * 72)
-    print(f"DATASET DE PRONOSTICO - niebla/tormenta a +{args.horizonte}h")
+    print(f"DATASET DE PRONOSTICO {args.icao.upper()} - niebla/tormenta a +{args.horizonte}h")
     print("=" * 72)
 
-    if not args.entrada.exists():
-        print(f"\nERROR: falta {args.entrada}. Ejecutar collect_metar_history o dvc pull.")
+    if not entrada.exists():
+        print(f"\nERROR: falta {entrada}. Ejecutar collect_metar_history o dvc pull.")
         return 1
 
-    df = pd.read_csv(args.entrada, parse_dates=["timestamp"], low_memory=False)
+    df = pd.read_csv(entrada, parse_dates=["timestamp"], low_memory=False)
     print(f"\n  Historico: {len(df):,} observaciones")
 
     datos = construir(df, args.horizonte)
@@ -162,10 +174,11 @@ def main() -> int:
           f"adversos {test.objetivo.mean():.2%}")
 
     SALIDA_DIR.mkdir(parents=True, exist_ok=True)
-    ruta = SALIDA_DIR / f"forecast_skbo_h{args.horizonte}.csv"
+    ruta = SALIDA_DIR / f"forecast_{icao}_h{args.horizonte}.csv"
     datos.to_csv(ruta, index=False, encoding="utf-8")
     print(f"\n  Escrito en {ruta.relative_to(BACKEND_DIR)}")
-    print(f"\n  Siguiente: python -m ml.scripts.train_forecast --horizonte {args.horizonte}\n")
+    print(f"\n  Siguiente: python -m ml.scripts.train_forecast --icao {args.icao.upper()} "
+          f"--horizonte {args.horizonte}\n")
     return 0
 
 
