@@ -117,7 +117,7 @@ joblib.dump(artifacts['encoders'], f"{OUTPUT_DIR}/label_encoder.pkl")
 print(f"  ✓ label_encoder.pkl")
 
 # Feature names
-with open(f"{OUTPUT_DIR}/feature_names.txt", 'w') as f:
+with open(f"{OUTPUT_DIR}/feature_names.txt", 'w', encoding='utf-8') as f:
     f.write('\n'.join(artifacts['feature_names']))
 print(f"  ✓ feature_names.txt")
 

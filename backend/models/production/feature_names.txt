@@ -15,7 +15,7 @@ altitud_densidad
 punto_rocio
 hora
 mes
-dia_año
+dia_aÃ±o
 riesgo_hielo
 tormenta_electrica
 cizalladura_viento

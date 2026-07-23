@@ -129,21 +129,26 @@ class BatchPredictor:
         else:
             raise ValueError(f"Formato no soportado: {suffix}")
     
+    # Mínimo observable que debe traer un archivo de entrada. El resto de
+    # features las completa features.defaults a partir de estas.
+    #
+    # Antes se exigían nombres ('rafaga', 'nubes', 'hielo') que no existen
+    # en features/schema.py, o un juego alterno en inglés: un tercer
+    # vocabulario que no coincidía ni con el modelo ni con la API.
+    REQUIRED_COLUMNS = [
+        "temperatura", "humedad", "presion", "viento", "visibilidad",
+    ]
+
     def _validate_input(self, df: pd.DataFrame):
         """Valida que el DataFrame tenga las columnas mínimas requeridas."""
-        # Columnas que deben estar en español o inglés
-        required_spanish = ["temperatura", "humedad", "presion", "viento", 
-                          "rafaga", "visibilidad", "precipitacion", "nubes", "hielo"]
-        required_english = ["temp", "humidity", "pressure", "wind_speed", 
-                          "wind_gust", "visibility", "precipitation", "clouds", "ice_risk"]
-        
-        has_spanish = all(col in df.columns for col in required_spanish)
-        has_english = all(col in df.columns for col in required_english)
-        
-        if not (has_spanish or has_english):
+        faltantes = [c for c in self.REQUIRED_COLUMNS if c not in df.columns]
+
+        if faltantes:
             raise ValueError(
-                f"El archivo debe contener las columnas requeridas en español "
-                f"{required_spanish} o inglés {required_english}"
+                f"El archivo debe contener las columnas requeridas "
+                f"{self.REQUIRED_COLUMNS}. Faltan: {faltantes}. "
+                f"Para convertir una respuesta de OpenWeather, usar "
+                f"features.adapters.openweather_adapter."
             )
     
     def _process_in_chunks(self, df: pd.DataFrame, save_to_db: bool) -> pd.DataFrame:

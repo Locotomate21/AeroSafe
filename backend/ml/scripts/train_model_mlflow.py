@@ -224,7 +224,7 @@ with mlflow.start_run(experiment_id=experiment_id, run_name="aerosafe_rf_v1") as
     joblib.dump(artifacts['scaler'], f"{OUTPUT_DIR}/scaler.pkl")
     joblib.dump(artifacts['encoders'], f"{OUTPUT_DIR}/label_encoder.pkl")
     
-    with open(f"{OUTPUT_DIR}/feature_names.txt", 'w') as f:
+    with open(f"{OUTPUT_DIR}/feature_names.txt", 'w', encoding='utf-8') as f:
         f.write('\n'.join(artifacts['feature_names']))
     
     # Log artifacts a MLflow

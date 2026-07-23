@@ -25,23 +25,10 @@ def temp_dirs():
         yield config
 
 
-@pytest.fixture
-def sample_batch_data():
-    """Crea datos de ejemplo para batch - USAR FIXTURE ml_service para evitar conflictos."""
-    return pd.DataFrame([
-        {
-            "ciudad": "Bogotá",
-            "temperatura": 20.0,
-            "humedad": 80.0,
-            "presion": 1013.0,
-            "viento": 7.0,
-            "rafaga": 10.0,
-            "visibilidad": 6000.0,
-            "precipitacion": 0.0,
-            "nubes": 50.0,
-            "hielo": 0,
-        },
-    ])
+# sample_batch_data viene de conftest.py (3 filas con nombres canónicos).
+# Antes este módulo redefinía el fixture con 1 sola fila y nombres que no
+# existen en el schema ('rafaga', 'nubes', 'hielo'), tapando al de conftest
+# y contradiciendo sus propios asserts de len(result) == 3.
 
 
 def test_batch_predictor_initialization(temp_dirs):
@@ -90,11 +77,11 @@ def test_process_in_chunks(temp_dirs, ml_service):
             "humedad": 80.0,
             "presion": 1013.0,
             "viento": 7.0,
-            "rafaga": 10.0,
+            "rafagas": 10.0,
             "visibilidad": 6000.0,
             "precipitacion": 0.0,
-            "nubes": 50.0,
-            "hielo": 0,
+            "techo_nubes": 2000.0,
+            "riesgo_hielo": 0,
         }
         for i in range(5)
     ])

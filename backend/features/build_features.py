@@ -1,19 +1,26 @@
-# Guardar como: backend/features/build_features.py
+"""
+Feature engineering para el modelo de riesgo aeronautico.
 
+Contrato: entrenamiento e inferencia DEBEN producir exactamente las mismas
+29 columnas, en el mismo orden, con las mismas transformaciones. Cualquier
+divergencia produce predicciones silenciosamente erroneas, que es peor que
+un error.
+
+Por eso:
+  - fit=True  -> ajusta scaler y encoders, y los devuelve para persistirlos.
+  - fit=False -> EXIGE el scaler y los encoders ajustados. Si no llegan,
+                 lanza excepcion en vez de fabricar unos nuevos sin ajustar.
 """
-Feature engineering para modelo de riesgo aeronáutico
-Procesa 30+ variables aeronáuticas
-"""
-import pandas as pd
 import numpy as np
+import pandas as pd
 from sklearn.preprocessing import LabelEncoder, StandardScaler
 
-# Variables categóricas a encodear
+# Variables categoricas a encodear
 CATEGORICAL_FEATURES = [
     'descripcion', 'tipo_nubes', 'turbulencia', 'estado_pista'
 ]
 
-# Variables numéricas a escalar
+# Variables numericas a escalar
 NUMERICAL_FEATURES = [
     'temperatura', 'humedad', 'viento', 'visibilidad', 'precipitacion',
     'direccion_viento', 'runway_heading', 'viento_cruzado', 'viento_frente',
@@ -26,85 +33,117 @@ BOOLEAN_FEATURES = [
     'riesgo_hielo', 'tormenta_electrica', 'cizalladura_viento', 'es_noche'
 ]
 
+# Features derivadas de otras columnas
+DERIVED_FEATURES = [
+    'diferencia_rafagas', 'spread_temp_dewpoint', 'ratio_crosswind'
+]
+
+# Orden congelado de las 29 columnas que espera el modelo de produccion.
+# Coincide con models/production/feature_names.txt. No reordenar sin
+# reentrenar.
+FEATURE_ORDER = (
+    NUMERICAL_FEATURES + BOOLEAN_FEATURES + CATEGORICAL_FEATURES + DERIVED_FEATURES
+)
+
+# Columnas que se escalan (numericas + derivadas)
+SCALED_FEATURES = NUMERICAL_FEATURES + DERIVED_FEATURES
+
+
+class FeaturePipelineError(RuntimeError):
+    """El pipeline de features no puede producir la matriz esperada."""
+
 
 def build_features(raw_df: pd.DataFrame, fit=False, scaler=None, encoders=None):
     """
-    Construye features para el modelo
-    
+    Construye la matriz de features para el modelo.
+
     Args:
-        raw_df: DataFrame con datos crudos
-        fit: Si True, ajusta transformadores (solo en entrenamiento)
-        scaler: StandardScaler pre-ajustado (para predicción)
-        encoders: Dict de LabelEncoders pre-ajustados (para predicción)
-        
+        raw_df: DataFrame con las 26 columnas base (ver features/schema.py).
+                Para completar un payload parcial, usar antes
+                features.defaults.complete_raw_features().
+        fit: True solo durante entrenamiento.
+        scaler: StandardScaler ya ajustado. Obligatorio si fit=False.
+        encoders: dict {columna: LabelEncoder} ya ajustados. Obligatorio
+                  si fit=False.
+
     Returns:
-        X: DataFrame con features procesadas
-        artifacts: Dict con scaler y encoders (solo si fit=True)
+        fit=False -> X (DataFrame de 29 columnas en FEATURE_ORDER)
+        fit=True  -> (X, artifacts) con scaler, encoders y feature_names
+
+    Raises:
+        FeaturePipelineError: si faltan columnas base, o si se pide
+            inferencia sin scaler/encoders ajustados.
     """
     df = raw_df.copy()
-    
-    # Si no hay encoders, crear nuevos
-    if encoders is None:
-        encoders = {}
-        for col in CATEGORICAL_FEATURES:
-            if col in df.columns:
-                encoders[col] = LabelEncoder()
-    
-    # Encodear categóricas
-    for col in CATEGORICAL_FEATURES:
-        if col in df.columns:
-            if fit:
-                df[col] = encoders[col].fit_transform(df[col].astype(str))
-            else:
-                # Manejar valores no vistos
-                df[col] = df[col].apply(
-                    lambda x: x if x in encoders[col].classes_ else encoders[col].classes_[0]
-                )
-                df[col] = encoders[col].transform(df[col].astype(str))
-    
-    # Convertir booleanas a int
-    for col in BOOLEAN_FEATURES:
-        if col in df.columns:
-            df[col] = df[col].astype(int)
-    
-    # Crear features derivadas
-    if 'viento' in df.columns and 'rafagas' in df.columns:
-        df['diferencia_rafagas'] = df['rafagas'] - df['viento']
-    
-    if 'temperatura' in df.columns and 'punto_rocio' in df.columns:
-        df['spread_temp_dewpoint'] = df['temperatura'] - df['punto_rocio']
-    
-    if 'viento_cruzado' in df.columns and 'viento' in df.columns:
-        df['ratio_crosswind'] = df['viento_cruzado'] / (df['viento'] + 1)
-    
-    # Seleccionar features finales
-    feature_cols = []
-    for col in NUMERICAL_FEATURES + BOOLEAN_FEATURES + CATEGORICAL_FEATURES:
-        if col in df.columns:
-            feature_cols.append(col)
-    
-    # Agregar features derivadas
-    feature_cols.extend(['diferencia_rafagas', 'spread_temp_dewpoint', 'ratio_crosswind'])
-    
-    X = df[feature_cols].copy()
-    
-    # Escalar numéricas
-    numerical_cols = [c for c in X.columns if c in NUMERICAL_FEATURES or c in ['diferencia_rafagas', 'spread_temp_dewpoint', 'ratio_crosswind']]
-    
-    if scaler is None:
-        scaler = StandardScaler()
-    
+
+    if not fit:
+        if scaler is None or encoders is None:
+            raise FeaturePipelineError(
+                "En inferencia hay que pasar el scaler y los encoders del "
+                "entrenamiento. Sin ellos las features quedan en una escala "
+                "distinta a la que vio el modelo y la prediccion no significa "
+                "nada."
+            )
+
+    faltantes = [
+        c for c in NUMERICAL_FEATURES + BOOLEAN_FEATURES + CATEGORICAL_FEATURES
+        if c not in df.columns
+    ]
+    if faltantes:
+        raise FeaturePipelineError(
+            f"Faltan columnas base requeridas por el modelo: {faltantes}. "
+            f"Usar features.defaults.complete_raw_features() antes de llamar "
+            f"a build_features()."
+        )
+
+    # --- Categoricas -------------------------------------------------
     if fit:
-        X[numerical_cols] = scaler.fit_transform(X[numerical_cols])
+        encoders = encoders or {}
+        for col in CATEGORICAL_FEATURES:
+            encoders[col] = LabelEncoder()
+            df[col] = encoders[col].fit_transform(df[col].astype(str))
     else:
-        X[numerical_cols] = scaler.transform(X[numerical_cols])
-    
+        for col in CATEGORICAL_FEATURES:
+            encoder = encoders.get(col)
+            if encoder is None:
+                raise FeaturePipelineError(f"Falta el encoder de '{col}'")
+            conocidas = set(encoder.classes_)
+            # Una categoria no vista en entrenamiento se mapea a la primera
+            # clase conocida. Es una decision arbitraria pero explicita:
+            # el modelo no sabe nada de ese valor.
+            df[col] = df[col].astype(str).apply(
+                lambda x: x if x in conocidas else encoder.classes_[0]
+            )
+            df[col] = encoder.transform(df[col])
+
+    # --- Booleanas ---------------------------------------------------
+    for col in BOOLEAN_FEATURES:
+        df[col] = df[col].astype(bool).astype(int)
+
+    # --- Derivadas ---------------------------------------------------
+    # Se calculan SIEMPRE. Antes dependian de que existieran las columnas
+    # fuente, asi que en inferencia se referenciaban columnas inexistentes
+    # y el pipeline reventaba con KeyError.
+    df['diferencia_rafagas'] = df['rafagas'] - df['viento']
+    df['spread_temp_dewpoint'] = df['temperatura'] - df['punto_rocio']
+    df['ratio_crosswind'] = df['viento_cruzado'] / (df['viento'] + 1)
+
+    # --- Seleccion y orden -------------------------------------------
+    X = df[FEATURE_ORDER].copy()
+
+    # --- Escalado ----------------------------------------------------
+    if fit:
+        scaler = scaler or StandardScaler()
+        X[SCALED_FEATURES] = scaler.fit_transform(X[SCALED_FEATURES])
+    else:
+        X[SCALED_FEATURES] = scaler.transform(X[SCALED_FEATURES])
+
     if fit:
         artifacts = {
             'scaler': scaler,
             'encoders': encoders,
-            'feature_names': X.columns.tolist()
+            'feature_names': list(X.columns),
         }
         return X, artifacts
-    else:
-        return X
+
+    return X

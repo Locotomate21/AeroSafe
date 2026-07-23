@@ -28,14 +28,30 @@ class RiskRequest(BaseModel):
 
 class RiskResponse(BaseModel):
     """Response con predicción de riesgo"""
-    riesgo: str = Field(..., description="Nivel de riesgo: BAJO, MODERADO, ALTO, CRÍTICO")
-    confianza: float = Field(..., ge=0, le=1, description="Confianza de la predicción (0-1)")
-    probabilidades: Dict[str, float] = Field(..., description="Probabilidades por clase")
+    riesgo: str = Field(..., description="Nivel de riesgo: BAJO, MODERADO o ALTO")
+    confianza: float = Field(..., ge=0, le=1, description="Confianza de la predicción (0-1). 0 si la predicción no viene del modelo.")
+    probabilidades: Dict[str, float] = Field(..., description="Probabilidades por clase, según predict_proba del modelo. Vacío en modo mock.")
     factores_riesgo: Optional[List[str]] = Field(default=[], description="Factores que contribuyen al riesgo")
     recomendaciones: Optional[List[str]] = Field(default=[], description="Recomendaciones operacionales")
     datos_clima: Dict[str, Any] = Field(..., description="Datos meteorológicos usados")
     timestamp: Optional[str] = Field(default=None, description="Timestamp de la predicción")
-    
+
+    model_status: str = Field(
+        default="ml",
+        description=(
+            "Origen de la predicción. 'ml' = modelo entrenado. "
+            "'mock' = reglas heurísticas de respaldo, NO apto para uso operacional."
+        ),
+    )
+    imputed_features: List[str] = Field(
+        default=[],
+        description=(
+            "Variables que el cliente no aportó y fueron estimadas. "
+            "Cuantas más haya, menos respaldada por datos reales está la predicción."
+        ),
+    )
+    warning: Optional[str] = Field(default=None, description="Advertencia cuando model_status != 'ml'")
+
     class Config:
         json_schema_extra = {
             "example": {
@@ -44,8 +60,7 @@ class RiskResponse(BaseModel):
                 "probabilidades": {
                     "BAJO": 0.02,
                     "MODERADO": 0.06,
-                    "ALTO": 0.92,
-                    "CRÍTICO": 0.00
+                    "ALTO": 0.92
                 },
                 "factores_riesgo": [
                     "Viento fuerte (35 km/h)",
@@ -61,7 +76,9 @@ class RiskResponse(BaseModel):
                     "viento": 35,
                     "visibilidad": 2500
                 },
-                "timestamp": "2024-02-01T12:00:00Z"
+                "timestamp": "2024-02-01T12:00:00Z",
+                "model_status": "ml",
+                "imputed_features": ["estado_pista", "turbulencia", "techo_nubes"]
             }
         }
 

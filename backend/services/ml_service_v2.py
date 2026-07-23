@@ -1,95 +1,122 @@
-import pandas as pd
-import joblib
-import logging
-from typing import Optional, Dict, Any, List
-from pathlib import Path
-from datetime import datetime
+"""
+Servicio de inferencia de riesgo aeronautico.
 
-from models.models import RiskPrediction
-from features.build_features import build_features
+Nota de diseno sobre el modo mock: existe para que la API siga levantando
+cuando falta el modelo (desarrollo, CI, primer arranque), pero NUNCA debe
+confundirse con una prediccion real. Toda salida lleva 'model_status', y
+la caida a mock se registra como ERROR, no como warning. Un sistema que
+informa riesgo meteorologico no puede devolver reglas if/else disfrazadas
+de modelo entrenado.
+"""
+import logging
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Any, Dict, List, Optional
+
+import joblib
+import pandas as pd
+
 from core.config import settings
+from features.build_features import FeaturePipelineError, build_features
+from features.defaults import complete_raw_features
+from models.models import RiskPrediction
 
 logger = logging.getLogger(__name__)
 
+# Niveles que el modelo de produccion puede predecir.
+RISK_LEVELS = ["BAJO", "MODERADO", "ALTO"]
+
+MODEL_STATUS_ML = "ml"
+MODEL_STATUS_MOCK = "mock"
+
 
 class MLServiceV2:
-    """
-    Servicio de Machine Learning para predicción de riesgo aeronáutico
-    """
-    
-    def __init__(self, model_path: Optional[str] = None):
+    """Carga el modelo de produccion y expone prediccion unitaria y batch."""
+
+    def __init__(
+        self,
+        model_path: Optional[str] = None,
+        *,
+        model=None,
+        scaler=None,
+        encoders=None,
+    ):
         """
-        Inicializa el servicio ML
-        
         Args:
-            model_path: Ruta al modelo. Si None, usa settings.MODEL_PATH
+            model_path: Ruta al .pkl. Si es None, se usa settings.MODEL_PATH.
+            model: Modelo ya instanciado. Si se pasa, no se lee del disco
+                   (lo usan los tests con un mock).
+            scaler: StandardScaler ajustado, para inyeccion directa.
+            encoders: dict de LabelEncoders ajustados, para inyeccion directa.
         """
-        self.model = None
-        self.scaler = None
-        self.label_encoder = None
-        self.feature_names = []
-        
-        # Determinar ruta del modelo
-        if model_path:
-            model_file = Path(model_path)
-        else:
-            model_file = settings.get_model_path(settings.MODEL_PATH)
-        
-        # Cargar modelo
+        self.model = model
+        self.scaler = scaler
+        self.label_encoder = encoders
+        self.feature_names: List[str] = []
+
+        if model is not None:
+            logger.info("MLServiceV2 inicializado con un modelo inyectado")
+            return
+
+        model_file = Path(model_path) if model_path else settings.get_model_path(
+            settings.MODEL_PATH
+        )
+
         try:
             if not model_file.exists():
-                logger.warning(f"Modelo no encontrado en {model_file}")
-                logger.warning("Servicio ML iniciará en modo MOCK")
-                self.model = None
-            else:
-                self.model = joblib.load(model_file)
-                logger.info(f"✅ Modelo cargado desde {model_file}")
-                
-                # Cargar scaler si existe
-                scaler_path = settings.get_model_path(settings.SCALER_PATH)
-                if scaler_path.exists():
-                    self.scaler = joblib.load(scaler_path)
-                    logger.info(f"✅ Scaler cargado desde {scaler_path}")
-                
-                # Cargar encoder si existe
-                encoder_path = settings.get_model_path(settings.ENCODER_PATH)
-                if encoder_path.exists():
-                    self.label_encoder = joblib.load(encoder_path)
-                    logger.info(f"✅ Label encoder cargado desde {encoder_path}")
-                
-                # Cargar nombres de features si existen
-                feature_names_path = settings.get_model_path(
-                    settings.FEATURE_NAMES_PATH
+                logger.error(
+                    "Modelo no encontrado en %s. El servicio arranca en modo "
+                    "MOCK: las predicciones NO provienen del modelo entrenado.",
+                    model_file,
                 )
-                if feature_names_path.exists():
-                    with open(feature_names_path, 'r') as f:
-                        self.feature_names = [line.strip() for line in f]
-                    logger.info(f"✅ Feature names cargados: {len(self.feature_names)} features")
-                    
+                return
+
+            self.model = joblib.load(model_file)
+            logger.info("Modelo cargado desde %s", model_file)
+
+            scaler_path = settings.get_model_path(settings.SCALER_PATH)
+            if scaler_path.exists():
+                self.scaler = joblib.load(scaler_path)
+                logger.info("Scaler cargado desde %s", scaler_path)
+
+            encoder_path = settings.get_model_path(settings.ENCODER_PATH)
+            if encoder_path.exists():
+                self.label_encoder = joblib.load(encoder_path)
+                logger.info("Encoders cargados desde %s", encoder_path)
+
+            feature_names_path = settings.get_model_path(settings.FEATURE_NAMES_PATH)
+            if feature_names_path.exists():
+                # encoding explicito: el fichero contiene 'dia_año' y el
+                # default del sistema difiere entre Windows (cp1252) y
+                # Linux (utf-8), que es donde corre el contenedor.
+                with open(feature_names_path, "r", encoding="utf-8") as f:
+                    self.feature_names = [line.strip() for line in f if line.strip()]
+                logger.info("Feature names cargados: %d", len(self.feature_names))
+
+            # Sin scaler/encoders el modelo esta cargado pero es inutilizable:
+            # mejor decirlo al arrancar que descubrirlo en la primera peticion.
+            if self.scaler is None or self.label_encoder is None:
+                logger.error(
+                    "Modelo cargado pero faltan artefactos del pipeline "
+                    "(scaler=%s, encoders=%s). No se podra inferir.",
+                    self.scaler is not None,
+                    self.label_encoder is not None,
+                )
+
         except Exception as e:
-            logger.error(f"❌ Error cargando modelo: {str(e)}")
+            logger.exception("Error cargando el modelo: %s", e)
             self.model = None
-    
+
     def is_loaded(self) -> bool:
-        """Verifica si el modelo está cargado"""
+        """True si hay un modelo cargado."""
         return self.model is not None
-    
-    def predict(
-        self, 
-        payload: Dict[str, Any],
-        *,
-        db=None,
-    ) -> Dict[str, Any]:
-        """
-        Predice riesgo para un único caso
-        
-        Args:
-            payload: Diccionario con datos meteorológicos
-            db: Sesión de base de datos (opcional)
-            
-        Returns:
-            Diccionario con predicción
-        """
+
+    def can_infer(self) -> bool:
+        """True si se puede inferir de verdad con el modelo."""
+        return self.model is not None
+
+    def predict(self, payload: Dict[str, Any], *, db=None) -> Dict[str, Any]:
+        """Predice el riesgo para un unico caso."""
         raw_df = pd.DataFrame([payload])
         result_df = self.predict_batch(
             raw_df,
@@ -98,7 +125,7 @@ class MLServiceV2:
             db=db,
         )
         return result_df.iloc[0].to_dict()
-    
+
     def predict_batch(
         self,
         raw_df: pd.DataFrame,
@@ -108,275 +135,245 @@ class MLServiceV2:
         db=None,
     ) -> pd.DataFrame:
         """
-        Predice riesgo para múltiples casos (batch)
-        
-        Args:
-            raw_df: DataFrame con datos crudos
-            ciudad: Nombre de ciudad (opcional)
-            icao: Código ICAO (opcional)
-            db: Sesión de base de datos (opcional)
-            
-        Returns:
-            DataFrame con predicciones
+        Predice el riesgo para multiples casos.
+
+        Devuelve el DataFrame de entrada mas las columnas:
+            riesgo, confianza, model_status, prob_<CLASE>...
         """
-        # Si no hay modelo, usar predicción mock
-        if not self.is_loaded():
-            return self._predict_mock(raw_df)
-        
+        if not self.can_infer():
+            return self._predict_mock(
+                raw_df, motivo="modelo no disponible en el servicio"
+            )
+
         try:
-            # Construir features
-            X = build_features(raw_df)
-            
-            # Hacer predicción
+            completed, imputados = complete_raw_features(raw_df, icao=icao)
+            X = build_features(
+                completed, scaler=self.scaler, encoders=self.label_encoder
+            )
+
             preds = self.model.predict(X)
             probs = self.model.predict_proba(X)
-            
-            # Preparar output
+            classes = [str(c) for c in self.model.classes_]
+
             output = raw_df.copy()
-            output["riesgo"] = preds
+            output["riesgo"] = [str(p) for p in preds]
             output["confianza"] = probs.max(axis=1)
-            
-            # Guardar en base de datos si se proporciona
+            output["model_status"] = MODEL_STATUS_ML
+
+            # Probabilidades reales del modelo, una columna por clase.
+            for i, cls in enumerate(classes):
+                output[f"prob_{cls}"] = probs[:, i]
+
+            if imputados:
+                logger.info(
+                    "Prediccion con %d features imputadas: %s",
+                    len(imputados),
+                    ", ".join(imputados),
+                )
+            output.attrs["imputed_features"] = imputados
+
             if db is not None:
-                try:
-                    for i in range(len(output)):
-                        # Crear probabilidades dict
-                        probabilidades = {}
-                        if hasattr(self.model, 'classes_'):
-                            probabilidades = {
-                                str(cls): float(p)
-                                for cls, p in zip(self.model.classes_, probs[i])
-                            }
-                        
-                        record = RiskPrediction(
-                            ciudad=ciudad,
-                            icao=icao,
-                            riesgo=str(preds[i]),
-                            confianza=float(probs[i].max()),
-                            probabilidades=probabilidades,
-                            temperatura=raw_df.iloc[i].get("temperatura"),
-                            humedad=raw_df.iloc[i].get("humedad"),
-                            viento=raw_df.iloc[i].get("viento"),
-                            visibilidad=raw_df.iloc[i].get("visibilidad"),
-                        )
-                        db.add(record)
-                    db.commit()
-                    logger.info(f"✅ {len(output)} predicciones guardadas en BD")
-                except Exception as e:
-                    logger.error(f"Error guardando predicciones en BD: {str(e)}")
-                    db.rollback()
-            
+                self._persistir(output, probs, classes, raw_df, ciudad, icao, db)
+
             return output
-            
+
+        except FeaturePipelineError as e:
+            return self._predict_mock(raw_df, motivo=f"pipeline de features: {e}")
         except Exception as e:
-            logger.error(f"Error en predicción: {str(e)}")
-            # Fallback a mock en caso de error
-            return self._predict_mock(raw_df)
-    
-    def _predict_mock(self, raw_df: pd.DataFrame) -> pd.DataFrame:
+            logger.exception("Error inesperado en prediccion: %s", e)
+            return self._predict_mock(raw_df, motivo=f"error de inferencia: {e}")
+
+    def _persistir(self, output, probs, classes, raw_df, ciudad, icao, db) -> None:
+        """Guarda las predicciones en base de datos."""
+        try:
+            for i in range(len(output)):
+                record = RiskPrediction(
+                    ciudad=ciudad,
+                    icao=icao,
+                    riesgo=str(output["riesgo"].iloc[i]),
+                    confianza=float(probs[i].max()),
+                    probabilidades={
+                        cls: float(p) for cls, p in zip(classes, probs[i])
+                    },
+                    temperatura=raw_df.iloc[i].get("temperatura"),
+                    humedad=raw_df.iloc[i].get("humedad"),
+                    viento=raw_df.iloc[i].get("viento"),
+                    visibilidad=raw_df.iloc[i].get("visibilidad"),
+                )
+                db.add(record)
+            db.commit()
+            logger.info("%d predicciones guardadas en BD", len(output))
+        except Exception as e:
+            logger.error("Error guardando predicciones en BD: %s", e)
+            db.rollback()
+
+    def _predict_mock(self, raw_df: pd.DataFrame, *, motivo: str) -> pd.DataFrame:
         """
-        Genera predicciones simuladas cuando el modelo no está disponible
-        
-        Args:
-            raw_df: DataFrame con datos
-            
-        Returns:
-            DataFrame con predicciones simuladas
+        Prediccion por reglas, para cuando el modelo no esta disponible.
+
+        Se registra como ERROR a proposito: si esto aparece en produccion,
+        la API esta devolviendo heuristicas, no el modelo.
         """
-        logger.warning("Usando predicción MOCK - modelo no disponible")
-        
+        logger.error(
+            "PREDICCION MOCK (no es el modelo entrenado). Motivo: %s", motivo
+        )
+
         output = raw_df.copy()
-        
-        # Lógica simple basada en reglas para generar predicción realista
-        def calcular_riesgo_mock(row):
+
+        def evaluar(row):
             score = 0
-            
-            # Evaluar visibilidad
-            if row.get('visibilidad', 10000) < 1000:
+            visibilidad = row.get("visibilidad", 10000)
+            viento = row.get("viento", 0)
+            humedad = row.get("humedad", 50)
+
+            if visibilidad < 1000:
                 score += 3
-            elif row.get('visibilidad', 10000) < 5000:
+            elif visibilidad < 5000:
                 score += 2
-            
-            # Evaluar viento
-            if row.get('viento', 0) > 40:
+
+            if viento > 40:
                 score += 3
-            elif row.get('viento', 0) > 25:
+            elif viento > 25:
                 score += 2
-            elif row.get('viento', 0) > 15:
+            elif viento > 15:
                 score += 1
-            
-            # Evaluar humedad
-            if row.get('humedad', 50) > 85:
+
+            if humedad > 85:
                 score += 1
-            
-            # Determinar nivel de riesgo
-            if score >= 5:
-                return 'CRÍTICO', 0.90
-            elif score >= 3:
-                return 'ALTO', 0.85
-            elif score >= 1:
-                return 'MODERADO', 0.80
-            else:
-                return 'BAJO', 0.85
-        
-        # Aplicar predicción mock a cada fila
-        predicciones = raw_df.apply(calcular_riesgo_mock, axis=1)
-        output['riesgo'] = [p[0] for p in predicciones]
-        output['confianza'] = [p[1] for p in predicciones]
-        
+
+            if score >= 4:
+                return "ALTO"
+            if score >= 2:
+                return "MODERADO"
+            return "BAJO"
+
+        output["riesgo"] = raw_df.apply(evaluar, axis=1)
+        # Sin modelo no hay confianza que reportar. Cero es honesto;
+        # un 0.85 inventado no lo es.
+        output["confianza"] = 0.0
+        output["model_status"] = MODEL_STATUS_MOCK
+        output["mock_reason"] = motivo
+        for cls in RISK_LEVELS:
+            output[f"prob_{cls}"] = float("nan")
+
         return output
 
 
-# Crear instancia global
+# Instancia global usada por las rutas y el batch.
 try:
     ml_service_v2 = MLServiceV2()
-    if ml_service_v2.is_loaded():
-        logger.info("✅ Servicio ML global inicializado con modelo cargado")
+    if ml_service_v2.can_infer():
+        logger.info("Servicio ML global inicializado con el modelo de produccion")
     else:
-        logger.warning("⚠️ Servicio ML global inicializado en modo MOCK")
+        logger.error("Servicio ML global inicializado en modo MOCK")
 except Exception as e:
-    logger.error(f"❌ Error inicializando servicio ML global: {str(e)}")
+    logger.exception("Error inicializando el servicio ML global: %s", e)
     ml_service_v2 = None
 
 
-# ==================== HELPER FUNCTIONS ====================
+# ==================== HELPERS PARA LAS RUTAS ====================
 
-async def predict_risk_from_weather(weather_data: Dict[str, Any]) -> Dict[str, Any]:
+async def predict_risk_from_weather(
+    weather_data: Dict[str, Any],
+    *,
+    icao: Optional[str] = None,
+) -> Dict[str, Any]:
     """
-    Función helper para predicción de riesgo desde datos meteorológicos
-    
-    Args:
-        weather_data: Diccionario con datos meteorológicos
-        
-    Returns:
-        Diccionario con predicción de riesgo
+    Predice riesgo a partir de datos meteorologicos y arma la respuesta
+    que consumen las rutas.
     """
     if ml_service_v2 is None:
         raise RuntimeError("Servicio ML no inicializado")
-    
-    # Preparar datos para predicción
-    input_data = {
-        'temperatura': weather_data.get('temperatura', 20),
-        'humedad': weather_data.get('humedad', 60),
-        'viento': weather_data.get('viento', 10),
-        'visibilidad': weather_data.get('visibilidad', 10000),
-        'presion': weather_data.get('presion', 1013),
-    }
-    
-    # Hacer predicción
-    prediction = ml_service_v2.predict(input_data)
-    
-    # Analizar factores de riesgo
-    risk_factors = _analyze_risk_factors(weather_data, prediction['riesgo'])
-    
-    # Generar recomendaciones
-    recommendations = _generate_recommendations(prediction['riesgo'], risk_factors)
-    
-    # Formatear respuesta
-    return {
-        'risk_level': prediction['riesgo'],
-        'confidence': float(prediction['confianza']),
-        'probabilities': _get_probabilities_dict(prediction),
-        'risk_factors': risk_factors,
-        'recommendations': recommendations,
-        'timestamp': datetime.utcnow().isoformat()
+
+    # Solo se pasan al pipeline los campos que el cliente realmente aporta;
+    # el resto lo completa complete_raw_features(), que ademas deja
+    # constancia de que fueron imputados.
+    campos = [
+        "temperatura", "humedad", "viento", "visibilidad", "presion",
+        "condicion", "descripcion", "direccion_viento", "rafagas",
+        "precipitacion", "techo_nubes", "punto_rocio", "tipo_nubes",
+        "turbulencia", "estado_pista", "tormenta_electrica",
+        "cizalladura_viento", "riesgo_hielo",
+    ]
+    input_data = {k: weather_data[k] for k in campos if weather_data.get(k) is not None}
+
+    raw_df = pd.DataFrame([input_data])
+    result_df = ml_service_v2.predict_batch(raw_df, icao=icao)
+    row = result_df.iloc[0].to_dict()
+
+    risk_level = str(row["riesgo"])
+    model_status = row.get("model_status", MODEL_STATUS_MOCK)
+
+    response = {
+        "risk_level": risk_level,
+        "confidence": float(row["confianza"]),
+        "probabilities": {
+            cls: float(row[f"prob_{cls}"])
+            for cls in RISK_LEVELS
+            if f"prob_{cls}" in row and pd.notna(row[f"prob_{cls}"])
+        },
+        "risk_factors": _analyze_risk_factors(weather_data),
+        "recommendations": _generate_recommendations(risk_level),
+        "model_status": model_status,
+        "imputed_features": result_df.attrs.get("imputed_features", []),
+        "timestamp": datetime.now(timezone.utc).isoformat(),
     }
 
+    if model_status == MODEL_STATUS_MOCK:
+        response["warning"] = (
+            "Prediccion generada por reglas heuristicas, NO por el modelo "
+            "entrenado. No usar con fines operacionales."
+        )
+        response["mock_reason"] = row.get("mock_reason")
 
-def _analyze_risk_factors(weather_data: Dict[str, Any], risk_level: str) -> List[str]:
-    """Analiza factores que contribuyen al riesgo"""
+    return response
+
+
+def _analyze_risk_factors(weather_data: Dict[str, Any]) -> List[str]:
+    """Enumera las condiciones que elevan el riesgo."""
     factors = []
-    
-    viento = weather_data.get('viento', 0)
-    visibilidad = weather_data.get('visibilidad', 10000)
-    humedad = weather_data.get('humedad', 50)
-    
+
+    viento = weather_data.get("viento", 0)
+    visibilidad = weather_data.get("visibilidad", 10000)
+    humedad = weather_data.get("humedad", 50)
+
     if viento > 40:
         factors.append(f"Viento muy fuerte ({viento} km/h)")
     elif viento > 25:
         factors.append(f"Viento fuerte ({viento} km/h)")
     elif viento > 15:
         factors.append(f"Viento moderado ({viento} km/h)")
-    
+
     if visibilidad < 1000:
         factors.append(f"Visibilidad muy reducida ({visibilidad}m)")
     elif visibilidad < 5000:
         factors.append(f"Visibilidad reducida ({visibilidad}m)")
-    
+
     if humedad > 85:
         factors.append(f"Humedad muy alta ({humedad}%)")
-    
+
     if not factors:
-        factors.append("Condiciones dentro de parámetros normales")
-    
+        factors.append("Condiciones dentro de parametros normales")
+
     return factors
 
 
-def _generate_recommendations(risk_level: str, risk_factors: List[str]) -> List[str]:
-    """Genera recomendaciones basadas en el nivel de riesgo"""
-    recommendations = []
-    
-    if risk_level == 'CRÍTICO':
-        recommendations.extend([
-            "Considerar suspender operaciones",
-            "Activar protocolos de emergencia",
-            "Monitoreo continuo obligatorio"
-        ])
-    elif risk_level == 'ALTO':
-        recommendations.extend([
+def _generate_recommendations(risk_level: str) -> List[str]:
+    """Recomendaciones operacionales por nivel de riesgo."""
+    if risk_level == "ALTO":
+        return [
             "Implementar restricciones operacionales",
             "Solo personal experimentado",
-            "Procedimientos IFR obligatorios"
-        ])
-    elif risk_level == 'MODERADO':
-        recommendations.extend([
-            "Precaución en operaciones",
+            "Procedimientos IFR obligatorios",
+            "Monitoreo continuo de condiciones",
+        ]
+    if risk_level == "MODERADO":
+        return [
+            "Precaucion en operaciones",
             "Monitoreo frecuente de condiciones",
-            "Briefing completo de tripulación"
-        ])
-    else:  # BAJO
-        recommendations.extend([
-            "Operaciones normales permitidas",
-            "Monitoreo estándar de condiciones"
-        ])
-    
-    return recommendations
-
-
-def _get_probabilities_dict(prediction: Dict[str, Any]) -> Dict[str, float]:
-    """Extrae o genera diccionario de probabilidades"""
-    # Si el modelo tiene probabilities, usarlas
-    # Sino, generar basado en el nivel de riesgo
-    
-    risk_level = prediction.get('riesgo', 'BAJO')
-    confidence = prediction.get('confianza', 0.85)
-    
-    # Generar probabilidades distribuidas
-    if risk_level == 'CRÍTICO':
-        return {
-            'BAJO': 0.01,
-            'MODERADO': 0.04,
-            'ALTO': 0.15,
-            'CRÍTICO': confidence
-        }
-    elif risk_level == 'ALTO':
-        return {
-            'BAJO': 0.02,
-            'MODERADO': 0.08,
-            'ALTO': confidence,
-            'CRÍTICO': 0.05
-        }
-    elif risk_level == 'MODERADO':
-        return {
-            'BAJO': 0.10,
-            'MODERADO': confidence,
-            'ALTO': 0.05,
-            'CRÍTICO': 0.01
-        }
-    else:  # BAJO
-        return {
-            'BAJO': confidence,
-            'MODERADO': 0.10,
-            'ALTO': 0.03,
-            'CRÍTICO': 0.00
-        }
+            "Briefing completo de tripulacion",
+        ]
+    return [
+        "Operaciones normales permitidas",
+        "Monitoreo estandar de condiciones",
+    ]

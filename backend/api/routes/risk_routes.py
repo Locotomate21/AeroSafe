@@ -26,8 +26,11 @@ async def predict_risk(request: RiskRequest):
         - BAJO: Condiciones normales, operaciones seguras
         - MODERADO: Precaución recomendada, monitoreo
         - ALTO: Condiciones adversas, posibles restricciones
-        - CRÍTICO: Peligro severo, operaciones limitadas
-    
+
+    La respuesta incluye 'model_status': 'ml' si proviene del modelo
+    entrenado, 'mock' si son reglas de respaldo. Y 'imputed_features'
+    con las variables que hubo que estimar porque no se aportaron.
+
     Ejemplo de request:
         {
             "temperatura": 15.5,
@@ -63,10 +66,18 @@ async def predict_risk(request: RiskRequest):
             probabilidades=prediction.get("probabilities", {}),
             factores_riesgo=prediction.get("risk_factors", []),
             recomendaciones=prediction.get("recommendations", []),
-            datos_clima=weather_data
+            datos_clima=weather_data,
+            timestamp=prediction.get("timestamp"),
+            model_status=prediction.get("model_status", "mock"),
+            imputed_features=prediction.get("imputed_features", []),
+            warning=prediction.get("warning"),
         )
-        
-        logger.info(f"Predicción completada: {prediction['risk_level']}")
+
+        logger.info(
+            "Predicción completada: %s (origen=%s)",
+            prediction["risk_level"],
+            prediction.get("model_status"),
+        )
         return response
         
     except Exception as e:
@@ -103,10 +114,12 @@ async def predict_airport_risk(icao: str):
         from services.aviation_weather_service import get_airport_weather_data
         weather_data = await get_airport_weather_data(icao)
         
-        # Predecir riesgo
+        # Predecir riesgo. Se pasa el ICAO para que el pipeline use el
+        # rumbo de pista y la elevación reales del aeropuerto en vez de
+        # los valores por defecto.
         from services.ml_service_v2 import predict_risk_from_weather
-        prediction = await predict_risk_from_weather(weather_data)
-        
+        prediction = await predict_risk_from_weather(weather_data, icao=icao)
+
         return {
             "aeropuerto": {
                 "icao": icao,
@@ -118,7 +131,10 @@ async def predict_airport_risk(icao: str):
                 "confianza": prediction["confidence"],
                 "probabilidades": prediction.get("probabilities", {}),
                 "factores": prediction.get("risk_factors", []),
-                "recomendaciones": prediction.get("recommendations", [])
+                "recomendaciones": prediction.get("recommendations", []),
+                "model_status": prediction.get("model_status"),
+                "imputed_features": prediction.get("imputed_features", []),
+                "warning": prediction.get("warning"),
             },
             "timestamp": weather_data.get("timestamp")
         }
@@ -249,34 +265,19 @@ async def demo_prediction():
     
     Útil para probar la API sin necesidad de datos reales
     """
-    # Datos de ejemplo: condiciones típicas de un día en Bogotá
+    # Datos de ejemplo: condiciones típicas de un día en Bogotá.
+    # La presión es QNH en hPa (ajustada a nivel del mar), que es lo que
+    # reporta el METAR y lo que vio el modelo en entrenamiento.
     demo_request = RiskRequest(
         temperatura=18.5,
         humedad=70,
         viento=8,
         visibilidad=9000,
-        presion=756,  # mmHg a 2600m altitud
+        presion=1026,
         condicion="Parcialmente nublado"
     )
-    
-    try:
-        # Usar el endpoint de predicción
-        return await predict_risk(demo_request)
-        
-    except Exception as e:
-        logger.error(f"Error en demo: {str(e)}")
-        # Si falla, retornar datos mock
-        return {
-            "riesgo": "BAJO",
-            "confianza": 0.85,
-            "probabilidades": {
-                "BAJO": 0.85,
-                "MODERADO": 0.12,
-                "ALTO": 0.03,
-                "CRÍTICO": 0.00
-            },
-            "factores_riesgo": ["Visibilidad reducida"],
-            "recomendaciones": ["Monitoreo continuo recomendado"],
-            "datos_clima": demo_request.dict(),
-            "note": "Datos de demostración - servicio ML no disponible"
-        }
+
+    # Si esto falla, se propaga el error. Antes se devolvía una predicción
+    # inventada con confianza 0.85, indistinguible de una real para quien
+    # consume la API.
+    return await predict_risk(demo_request)
