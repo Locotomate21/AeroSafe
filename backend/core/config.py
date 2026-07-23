@@ -11,7 +11,10 @@ class Settings(BaseSettings):
     # Server
     HOST: str = "0.0.0.0"
     PORT: int = 8000
-    DEBUG: bool = True
+    # Por defecto FALSE: un despliegue que olvide definir DEBUG debe quedar
+    # en modo seguro. Con DEBUG=true los errores 500 devuelven la traza
+    # interna al cliente.
+    DEBUG: bool = False
     
     # Database
     # Por defecto SQLite, pero puede sobrescribirse con .env para PostgreSQL
@@ -44,9 +47,12 @@ class Settings(BaseSettings):
     LOG_BACKUP_COUNT: int = 5
     
     # Autenticación
+    # Sin claves por defecto: unas credenciales hardcodeadas en el
+    # repositorio son credenciales publicas. Si REQUIRE_API_KEY es true,
+    # VALID_API_KEYS tiene que venir del .env o la app no arranca.
     REQUIRE_API_KEY: bool = False
-    VALID_API_KEYS: str = "dev-key-123,prod-key-456"
-    
+    VALID_API_KEYS: str = ""
+
     # Rate Limiting
     RATE_LIMIT_ENABLED: bool = True
     MAX_REQUESTS_PER_MINUTE: int = 100
@@ -73,12 +79,48 @@ class Settings(BaseSettings):
     
     def get_valid_api_keys(self) -> set[str]:
         """Obtiene conjunto de API keys válidas"""
-        return {key.strip() for key in self.VALID_API_KEYS.split(",")}
+        return {key.strip() for key in self.VALID_API_KEYS.split(",") if key.strip()}
+
+    def validate_security(self) -> list[str]:
+        """
+        Revisa la configuración de seguridad y devuelve los problemas.
+
+        Se llama al arrancar. No aborta el proceso —eso rompería el
+        desarrollo local— pero deja constancia en el log de cada punto
+        débil, para que un despliegue inseguro no pase inadvertido.
+        """
+        problemas = []
+
+        if self.REQUIRE_API_KEY and not self.get_valid_api_keys():
+            problemas.append(
+                "REQUIRE_API_KEY=true pero VALID_API_KEYS está vacío: "
+                "ninguna petición podrá autenticarse."
+            )
+
+        if not self.DEBUG and not self.REQUIRE_API_KEY:
+            problemas.append(
+                "La API está abierta sin autenticación (REQUIRE_API_KEY=false) "
+                "en una configuración de producción (DEBUG=false)."
+            )
+
+        if self.DEBUG:
+            problemas.append(
+                "DEBUG=true: los errores 500 exponen detalles internos. "
+                "No usar en producción."
+            )
+
+        if "*" in self.ALLOWED_ORIGINS:
+            problemas.append(
+                "ALLOWED_ORIGINS contiene '*' junto a allow_credentials=True: "
+                "combinación rechazada por los navegadores y peligrosa."
+            )
+
+        return problemas
 
 
 settings = Settings()
 
-# 🔧 Variables globales para compatibilidad con scripts antiguos
-# IMPORTANTE: Estas pueden ser None si no están en .env
+# Variables globales para compatibilidad con scripts antiguos.
+# Pueden ser None si no están definidas en .env.
 OPENWEATHER_API_KEY = settings.OPENWEATHER_API_KEY
 BASE_URL = settings.BASE_URL

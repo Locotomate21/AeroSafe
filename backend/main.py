@@ -1,11 +1,12 @@
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, Request, status
+from fastapi import Depends, FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
 import uvicorn
 
+from api.dependencies import rate_limiter, verify_api_key
 from api.routes.risk_routes import router as risk_router
 from api.routes.weather_routes import router as weather_router
 from api.routes.dashboard_routes import router as dashboard_router
@@ -16,6 +17,10 @@ from database.connection import init_db
 # Setup logging
 logger = get_logger(__name__)
 
+# Rutas exentas de rate limiting: el health check lo consulta el
+# orquestador cada pocos segundos y no debe consumir la cuota del cliente.
+RUTAS_SIN_LIMITE = {"/health", "/docs", "/redoc", "/openapi.json"}
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -23,11 +28,17 @@ async def lifespan(app: FastAPI):
     # --- Arranque ---
     logger.info("Iniciando %s v%s", settings.PROJECT_NAME, settings.VERSION)
 
-    if settings.DEBUG:
-        logger.warning(
-            "DEBUG=true: los errores 500 incluirán detalles internos. "
-            "No usar esta configuración en producción."
-        )
+    # Auditoría de seguridad: no aborta el arranque (rompería el desarrollo
+    # local) pero deja cada punto débil en el log, para que un despliegue
+    # inseguro no pase inadvertido.
+    for problema in settings.validate_security():
+        logger.warning("SEGURIDAD: %s", problema)
+
+    logger.info(
+        "Autenticación por API key: %s | Rate limit: %s",
+        "activa" if settings.REQUIRE_API_KEY else "DESACTIVADA",
+        f"{settings.MAX_REQUESTS_PER_MINUTE}/min" if settings.RATE_LIMIT_ENABLED else "DESACTIVADO",
+    )
 
     try:
         init_db()
@@ -74,9 +85,51 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.get_origins_list(),
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST"],
+    allow_headers=["Content-Type", "X-API-Key"],
 )
+
+
+@app.middleware("http")
+async def rate_limit_middleware(request: Request, call_next):
+    """
+    Limita las peticiones por IP.
+
+    RateLimiter llevaba implementado en api/dependencies.py desde el
+    principio, junto con RATE_LIMIT_ENABLED y MAX_REQUESTS_PER_MINUTE en
+    la configuración, pero nunca se conectó a nada: la API aceptaba
+    peticiones sin límite mientras aparentaba tener control de caudal.
+
+    Nota: el contador vive en memoria del proceso. Con varias réplicas
+    cada una lleva su propia cuenta; para eso hace falta Redis.
+    """
+    if not settings.RATE_LIMIT_ENABLED or request.url.path in RUTAS_SIN_LIMITE:
+        return await call_next(request)
+
+    cliente = (
+        request.headers.get("x-forwarded-for", "").split(",")[0].strip()
+        or request.headers.get("x-real-ip")
+        or (request.client.host if request.client else "unknown")
+    )
+
+    if not rate_limiter.check_rate_limit(
+        key=f"ip:{cliente}",
+        max_requests=settings.MAX_REQUESTS_PER_MINUTE,
+        window_seconds=60,
+    ):
+        logger.warning("Rate limit excedido para %s en %s", cliente, request.url.path)
+        return JSONResponse(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            content={
+                "detail": (
+                    f"Límite de {settings.MAX_REQUESTS_PER_MINUTE} peticiones "
+                    f"por minuto excedido."
+                )
+            },
+            headers={"Retry-After": "60"},
+        )
+
+    return await call_next(request)
 
 
 # ==================== EXCEPTION HANDLERS ====================
@@ -110,9 +163,23 @@ async def general_exception_handler(request: Request, exc: Exception):
 
 # ==================== ROUTERS ====================
 
-app.include_router(risk_router, prefix="/api/v1/risk", tags=["Risk Assessment"])
-app.include_router(weather_router, prefix="/api/v1/weather", tags=["Weather"])
-app.include_router(dashboard_router, prefix="/api/v1/dashboard", tags=["Dashboard"])
+# Los routers de negocio exigen API key cuando REQUIRE_API_KEY=true.
+# verify_api_key deja pasar todo si está desactivada, así el desarrollo
+# local no necesita cabeceras.
+protegido = [Depends(verify_api_key)]
+
+app.include_router(
+    risk_router, prefix="/api/v1/risk", tags=["Risk Assessment"],
+    dependencies=protegido,
+)
+app.include_router(
+    weather_router, prefix="/api/v1/weather", tags=["Weather"],
+    dependencies=protegido,
+)
+app.include_router(
+    dashboard_router, prefix="/api/v1/dashboard", tags=["Dashboard"],
+    dependencies=protegido,
+)
 
 
 # ==================== ROOT ENDPOINTS ====================

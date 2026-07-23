@@ -1,8 +1,16 @@
-version: '3.8'
+# AeroSafe - Orquestacion local
+#
+# Ejecutar desde backend/:   docker compose up --build
+#
+# Nota sobre rutas: este fichero vive en backend/, que tras la
+# reorganizacion es la raiz de la aplicacion. Antes montaba ./models,
+# ./data y ./ml como si estuviera en la raiz del repositorio, asi que
+# todos los volumenes apuntaban a directorios inexistentes y el
+# contenedor arrancaba sin modelo.
 
 services:
   # ============================================
-  # Backend API Service
+  # Backend API
   # ============================================
   backend:
     build:
@@ -12,55 +20,36 @@ services:
     restart: unless-stopped
     ports:
       - "8000:8000"
+
+    # Las credenciales se leen de backend/.env, no se escriben aqui.
+    env_file:
+      - .env
+
     environment:
-      # Database
-      - DATABASE_URL=${DATABASE_URL:-sqlite:///./aerosafe.db}
-      
-      # API Keys (desde .env, SIN fallback hardcodeado por seguridad)
-      - OPENWEATHER_API_KEY=${OPENWEATHER_API_KEY}
-      - WEATHER_API_KEY=${WEATHER_API_KEY}
-      
-      # ML Models - Rutas dentro del contenedor
-      - MODEL_PATH=/app/models/production/model.pkl
-      - SCALER_PATH=/app/models/production/scaler.pkl
-      - ENCODER_PATH=/app/models/production/label_encoder.pkl
-      - FEATURE_NAMES_PATH=/app/models/production/feature_names.txt
-      
-      # Server
+      # Rutas dentro del contenedor (WORKDIR=/app)
+      - MODEL_PATH=models/production/model.pkl
+      - SCALER_PATH=models/production/scaler.pkl
+      - ENCODER_PATH=models/production/label_encoder.pkl
+      - FEATURE_NAMES_PATH=models/production/feature_names.txt
       - HOST=0.0.0.0
       - PORT=8000
-      - DEBUG=${DEBUG:-true}
-      
-      # CORS
-      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-http://localhost:3000,http://localhost:5173}
-      
-      # Logging
-      - LOG_LEVEL=${LOG_LEVEL:-INFO}
-      - LOG_FILE=/app/logs/app.log
-      
+      - LOG_FILE=logs/app.log
+
     volumes:
-      # 🔧 IMPORTANTE: Estructura de volúmenes corregida
-      
-      # Backend code (hot reload en desarrollo)
-      - ./backend:/app/backend
-      
-      # Modelos ML (CRÍTICO - estos deben existir)
-      - ./models:/app/models
-      
-      # Data para batch processing
+      # Modelos: sin esto el contenedor arranca en modo mock.
+      - ./models:/app/models:ro
+      # Datos de entrada/salida del procesamiento batch.
       - ./data:/app/data
-      
-      # Logs persistentes
+      # Logs persistentes fuera del contenedor.
       - ./logs:/app/logs
-      
-      # Scripts ML (si necesitas ejecutarlos)
-      - ./ml:/app/ml
-      
+
     networks:
       - aerosafe-network
-    
-    # Healthcheck para verificar que la API esté funcionando
+
     healthcheck:
+      # /health devuelve 503 si el modelo no carga o la BD no responde,
+      # asi que el contenedor se marca unhealthy en vez de aceptar
+      # trafico y responder con predicciones heuristicas.
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 30s
       timeout: 10s
@@ -68,53 +57,63 @@ services:
       start_period: 40s
 
   # ============================================
-  # PostgreSQL Database (Opcional - para producción)
+  # PostgreSQL (perfil "postgres")
   # ============================================
-  # Descomenta si quieres usar PostgreSQL en lugar de SQLite
-  
-  # db:
-  #   image: postgres:15-alpine
-  #   container_name: aerosafe-db
-  #   restart: unless-stopped
-  #   environment:
-  #     - POSTGRES_USER=aerosafe_user
-  #     - POSTGRES_PASSWORD=aerosafe_pass
-  #     - POSTGRES_DB=aerosafe_db
-  #   ports:
-  #     - "5432:5432"
-  #   volumes:
-  #     - postgres_data:/var/lib/postgresql/data
-  #     - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init.sql
-  #   networks:
-  #     - aerosafe-network
+  # Activar con:  docker compose --profile postgres up
+  # y ajustar DATABASE_URL en .env:
+  #   postgresql://aerosafe:<password>@db:5432/aerosafe
+  db:
+    image: postgres:16-alpine
+    container_name: aerosafe-db
+    restart: unless-stopped
+    profiles: ["postgres"]
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER:-aerosafe}
+      # Sin valor por defecto a proposito. Si no se define en .env,
+      # Postgres se niega a arrancar en vez de quedarse con una password
+      # conocida escrita en el repositorio.
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB:-aerosafe}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    networks:
+      - aerosafe-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-aerosafe}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   # ============================================
-  # MLflow Tracking Server (Opcional)
+  # MLflow Tracking (perfil "mlflow")
   # ============================================
-  # Descomenta si usas MLflow
-  
-  # mlflow:
-  #   image: ghcr.io/mlflow/mlflow:v2.9.2
-  #   container_name: aerosafe-mlflow
-  #   restart: unless-stopped
-  #   ports:
-  #     - "5000:5000"
-  #   volumes:
-  #     - ./ml/mlruns:/mlflow/mlruns
-  #     - ./ml/mlartifacts:/mlflow/mlartifacts
-  #   command: >
-  #     mlflow server
-  #     --host 0.0.0.0
-  #     --port 5000
-  #     --backend-store-uri file:///mlflow/mlruns
-  #     --default-artifact-root file:///mlflow/mlartifacts
-  #   networks:
-  #     - aerosafe-network
+  # Activar con:  docker compose --profile mlflow up
+  # Interfaz en http://localhost:5000
+  mlflow:
+    image: ghcr.io/mlflow/mlflow:v2.19.0
+    container_name: aerosafe-mlflow
+    restart: unless-stopped
+    profiles: ["mlflow"]
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./mlruns:/mlflow/mlruns
+      - ./mlartifacts:/mlflow/mlartifacts
+    command: >
+      mlflow server
+      --host 0.0.0.0
+      --port 5000
+      --backend-store-uri file:///mlflow/mlruns
+      --default-artifact-root file:///mlflow/mlartifacts
+    networks:
+      - aerosafe-network
 
 networks:
   aerosafe-network:
     driver: bridge
 
-# Volúmenes persistentes (si usas PostgreSQL)
-# volumes:
-#   postgres_data:
+volumes:
+  postgres_data:
