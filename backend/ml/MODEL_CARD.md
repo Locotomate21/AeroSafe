@@ -393,6 +393,59 @@ python -m ml.scripts.evaluate_transfer --origen SKBO --destino SKRG
 python -m ml.scripts.transfer_matrix --aeropuertos SKBO SKRG SKIP SKPS SKMZ
 ```
 
+### Contraste con otro régimen climático (Caribe)
+
+La prueba más dura: llevar el modelo andino a la costa, un régimen físico
+distinto (convección y calor, no niebla de radiación). Se eligieron los
+dos grandes del Caribe con datos ricos —Barranquilla (SKBQ) y Cartagena
+(SKCG)— para que un eventual fallo no se confunda con escasez de datos,
+como sí pasaría con los aeropuertos pequeños de selva o Pacífico.
+
+El resultado **refuta la hipótesis geográfica** y la reemplaza por una
+mejor:
+
+| Par | Retención | Tasa base destino |
+|---|---|---|
+| SKRG → **SKBQ** (costero) | **91%** | 5.2% |
+| SKBO → **SKBQ** (costero) | 74% | 5.2% |
+| SKBQ (costero) → SKRG | 82% | 12.6% |
+| SKCG → SKBO | 32% | 5.4% |
+| cualquiera → SKCG | 2-7% (falla) | 1.8% |
+
+**Barranquilla, siendo costero, transfiere tan bien como el mejor par
+andino** (SKRG→SKBQ, 91%). No necesita un modelo propio. La razón: está
+en la desembocadura del Magdalena y tiene niebla de advección (5.9%, tasa
+base casi igual a Bogotá). Mismo fenómeno objetivo, misma frecuencia →
+transfiere.
+
+**Cartagena es donde de verdad se rompe**, pero no por ser costero: por
+no tener el fenómeno. Allí la niebla es el 0.41% del tiempo (cielo
+despejado el 96.4%). El objetivo "niebla o tormenta" queda en 1.8%,
+dominado por tormenta, con solo 456 eventos en test — su propio modelo
+local es débil (PR-AUC 0.074). No es un problema de modelo sino de
+**objetivo**: en Cartagena habría que predecir convección/tormenta, no
+niebla. Y aun así el clima adverso de cualquier tipo es raro (máx. 3.6%),
+así que es intrínsecamente un problema más difícil.
+
+**Conclusión — el principio que gobierna la transferibilidad no es la
+geografía sino dos factores medibles:**
+
+1. **Mismo fenómeno objetivo a frecuencia parecida.** Dos aeropuertos con
+   niebla al ~5% transfieren aunque uno sea andino y otro costero
+   (SKBO ↔ SKBQ). Dos del mismo bioma no transfieren si su régimen de
+   niebla difiere (SKBO vs SKMZ orográfico).
+2. **Datos suficientes** en origen y destino.
+
+Corolario para la pregunta "¿un aeropuerto de selva/costa necesita otro
+modelo?": **depende de si tiene el fenómeno objetivo con frecuencia
+entrenable, no de su bioma.** Donde el fenómeno no existe, el remedio no
+es otro modelo sino redefinir qué se predice — y conseguir datos de
+desenlace para un objetivo que sí ocurra.
+
+```bash
+python -m ml.scripts.transfer_matrix --aeropuertos SKBO SKRG SKBQ SKCG
+```
+
 ### Calibración de probabilidades
 
 El modelo base usa `class_weight='balanced'`, que le da buen poder de

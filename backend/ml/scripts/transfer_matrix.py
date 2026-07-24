@@ -185,27 +185,31 @@ def main() -> int:
         print(f"\n  Retencion media (destinos con referencia valida): {media:.0%}")
         print(f"  Mejor par: {mejor_par[0]} -> {mejor_par[1]} ({mejor_par[2]:.0%})")
 
+        # Pares fuertes (>=70%) y debiles (<40%), calculados de los datos.
+        fuertes = [(o, d, r) for o, d, r in retenciones_cross if r >= 0.70]
+        debiles_pares = [(o, d, r) for o, d, r in retenciones_cross if r < 0.40]
+
         print()
         print("  LECTURA")
         print()
-        print("  El resultado limpio de 2 aeropuertos (SKBO<->SKRG, ~87%) NO se")
-        print("  sostiene sobre el conjunto andino ampliado: la retencion media")
-        print(f"  cae al {media:.0%}. La transferencia es fuerte solo entre los dos")
-        print("  aeropuertos grandes y ricos en datos (SKBO, SKRG: registros")
-        print("  continuos de ~175k obs, niebla de radiacion de valle), y debil")
-        print("  hacia el resto.")
+        if fuertes:
+            print("  Transfieren BIEN (>=70% del margen local):")
+            for o, d, r in sorted(fuertes, key=lambda x: -x[2]):
+                print(f"    {o} -> {d}: {r:.0%}  (destino tasa {base_rate[d]:.1%})")
+        if debiles_pares:
+            print("  Transfieren MAL (<40%):")
+            for o, d, r in sorted(debiles_pares, key=lambda x: x[2]):
+                print(f"    {o} -> {d}: {r:.0%}  (destino tasa {base_rate[d]:.1%})")
+        if debiles:
+            print(f"  Destinos con datos insuficientes (excluidos): {', '.join(debiles)}")
+
         print()
-        print("  Las causas, identificables por aeropuerto:")
-        print("   - SKIP: demasiado pocos eventos; ni su modelo local es fiable.")
-        print("   - SKMZ: niebla orografica persistente (24-43% de las horas) y")
-        print("     deriva temporal; es otro regimen, no el mismo con otra tasa.")
-        print("   - SKPS: intermedio, retiene ~45% desde los grandes.")
-        print()
-        print("  Conclusion honesta: 'andino de gran altitud' NO es una familia")
-        print("  homogenea. Agrupar por elevacion es demasiado grueso; la fisica")
-        print("  de la niebla (radiacion vs orografica) y el volumen de datos")
-        print("  importan mas. La transferencia funciona entre aeropuertos")
-        print("  analogos y con datos, no por compartir cordillera.")
+        print("  La transferencia NO la decide la geografia sino dos factores")
+        print("  medibles: que ambos aeropuertos tengan el mismo fenomeno con")
+        print("  frecuencia parecida, y que haya datos suficientes. Aeropuertos")
+        print("  con tasa base similar y datos ricos transfieren; los que carecen")
+        print("  del fenomeno objetivo (tasa muy baja) no son un problema de")
+        print("  modelo sino de OBJETIVO: ahi hay que redefinir que se predice.")
 
     if not args.no_mlflow:
         try:

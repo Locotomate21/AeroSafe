@@ -90,11 +90,19 @@ def construir(df: pd.DataFrame, horizonte: int) -> pd.DataFrame:
 
 
 def _entrada_por_defecto(icao: str) -> Path:
-    """Localiza el historico de un aeropuerto sin fijar los anios."""
-    patron = sorted(METAR_DIR.glob(f"metar_{icao.lower()}_*.csv"))
-    if patron:
-        return patron[-1]
-    return METAR_DIR / f"metar_{icao.lower()}_2005_2026.csv"
+    """
+    Localiza el historico mas COMPLETO de un aeropuerto.
+
+    Se elige por numero de filas, no por orden alfabetico: si conviven
+    'metar_skbo_2005_2026.csv' y un 'metar_skbo_2023_2024.csv' de una
+    prueba, el orden alfabetico coge el segundo (2023 > 2005) y trunca el
+    dataset a dos anios sin avisar. Ese fallo ocurrio y truncó SKBO.
+    """
+    candidatos = list(METAR_DIR.glob(f"metar_{icao.lower()}_*.csv"))
+    if not candidatos:
+        return METAR_DIR / f"metar_{icao.lower()}_2005_2026.csv"
+    # El fichero con mas lineas es el de mayor cobertura temporal.
+    return max(candidatos, key=lambda p: p.stat().st_size)
 
 
 def main() -> int:
