@@ -17,7 +17,8 @@ sys.path.append(str(Path(__file__).resolve().parents[2]))
 
 SKBO_ICAO = "SKBO"
 SKBO_COORDS = {"lat": 4.7016, "lon": -74.1469}
-API_KEY = os.getenv("OPENWEATHER_API_KEY", "a45d492668dceb132d0d67106b718810")
+# Sin fallback hardcodeado: la clave viene del entorno (.env) o no hay clave.
+API_KEY = os.getenv("OPENWEATHER_API_KEY")
 
 # Días de datos históricos a recolectar (OpenWeather Free: solo current + forecast)
 # Para históricos reales necesitarías API de pago

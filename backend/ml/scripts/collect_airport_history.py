@@ -2,17 +2,26 @@
 """
 Script para recolectar datos históricos de aeropuertos colombianos
 """
-import httpx
-import pandas as pd
 import asyncio
-from datetime import datetime, timedelta
-import time
 import json
+import os
+import time
+from datetime import datetime, timedelta
 from pathlib import Path
 
-# API Keys (usar la tuya)
-OPENWEATHER_API_KEY = "a45d492668dceb132d0d67106b718810"
-VISUALCROSSING_API_KEY = ""  # Opcional: registrarse en visualcrossing.com
+import httpx
+import pandas as pd
+
+# La clave se lee del entorno (.env), NUNCA se escribe en el codigo: una
+# clave hardcodeada en el repositorio es una clave publica.
+OPENWEATHER_API_KEY = os.getenv("OPENWEATHER_API_KEY")
+VISUALCROSSING_API_KEY = os.getenv("VISUALCROSSING_API_KEY", "")
+
+if not OPENWEATHER_API_KEY:
+    raise SystemExit(
+        "Falta OPENWEATHER_API_KEY. Definirla en backend/.env "
+        "(ver .env.example) antes de ejecutar este script."
+    )
 
 # Aeropuertos principales de Colombia
 AIRPORTS = {
