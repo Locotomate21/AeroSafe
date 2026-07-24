@@ -1,0 +1,67 @@
+#!/usr/bin/env bash
+#
+# Hook anti-secretos para AeroSafe.
+#
+# Bloquea el commit si detecta credenciales en el contenido preparado
+# (staged). Sin dependencias externas: solo git y grep, para que proteja
+# aunque no haya gitleaks ni pre-commit instalados.
+#
+# Instalar (una vez por clon):
+#     git config core.hooksPath scripts/git-hooks
+#
+# Saltar en un caso legitimo puntual:
+#     git commit --no-verify
+#
+# Este proyecto ya filtro la clave de OpenWeather en su primer commit;
+# el hook existe para que no vuelva a pasar.
+
+set -euo pipefail
+
+# Solo el contenido AÑADIDO (lineas '+'), para no marcar el borrado de
+# una clave vieja como si fuera una fuga.
+diff_add() { git diff --cached --diff-filter=ACM -U0 | grep '^+' | grep -v '^+++'; }
+
+fallos=0
+marcar() { echo "  [$1] $2"; fallos=1; }
+
+anadido="$(diff_add || true)"
+
+# --- 1. Fichero .env staged (nunca debe versionarse) ---
+if git diff --cached --name-only | grep -qE '(^|/)\.env$'; then
+    marcar ".env" "estas intentando commitear un .env; contiene credenciales"
+fi
+
+# --- 2. DVC config.local (auth de DagsHub) ---
+if git diff --cached --name-only | grep -qE '\.dvc/config\.local$'; then
+    marcar "dvc" ".dvc/config.local lleva el token de DagsHub; no versionarlo"
+fi
+
+# --- 3. Patrones de secreto en el contenido añadido ---
+if [ -n "$anadido" ]; then
+    # OpenWeather / claves hex de 32
+    if echo "$anadido" | grep -qE '\b[a-f0-9]{32}\b'; then
+        marcar "hex32" "posible API key (32 hex). Si es OpenWeather, va en .env"
+    fi
+    # Tokens de 40 hex (DagsHub, GitHub clasico)
+    if echo "$anadido" | grep -qE '\b[a-f0-9]{40}\b'; then
+        marcar "hex40" "posible token (40 hex). Va en .env / config.local"
+    fi
+    # Credencial embebida en una URL
+    if echo "$anadido" | grep -qE 'https?://[^:@/]+:[^@/]+@'; then
+        marcar "url-auth" "credencial embebida en una URL (user:token@host)"
+    fi
+    # Asignaciones sospechosas: KEY/TOKEN/PASSWORD = "algo largo"
+    if echo "$anadido" | grep -qiE '(api_key|apikey|token|password|secret)[[:space:]]*[=:][[:space:]]*["'\'']?[A-Za-z0-9_-]{16,}'; then
+        marcar "assign" "asignacion de credencial en el codigo; leela de os.getenv()"
+    fi
+fi
+
+if [ "$fallos" -ne 0 ]; then
+    echo ""
+    echo "COMMIT BLOQUEADO: posible secreto en los cambios."
+    echo "Mueve la credencial a backend/.env (gitignored) y leela con os.getenv()."
+    echo "Si es un falso positivo, revisa y usa:  git commit --no-verify"
+    exit 1
+fi
+
+exit 0
