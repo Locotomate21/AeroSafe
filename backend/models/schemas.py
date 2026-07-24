@@ -249,6 +249,49 @@ class AirportStatus(BaseModel):
     last_updated: str
 
 
+# ==================== FORECAST SCHEMAS ====================
+
+class ForecastResponse(BaseModel):
+    """
+    Pronóstico de niebla o tormenta a N horas.
+
+    A diferencia de RiskResponse (que clasifica la condición actual), esto
+    predice el futuro a partir del METAR actual. La 'probabilidad' está
+    calibrada: un 0.30 significa ~30% de ocurrencia real.
+    """
+    icao: str = Field(..., description="Código ICAO del aeropuerto")
+    horizonte_horas: int = Field(..., description="Horas de anticipación del pronóstico")
+    objetivo: str = Field(..., description="Fenómeno pronosticado")
+    probabilidad: float = Field(..., ge=0, le=1, description="Probabilidad calibrada (0-1)")
+    nivel: str = Field(..., description="MINIMO, BAJO, MODERADO o ALTO")
+    alerta: bool = Field(..., description="True si la probabilidad supera el umbral de alerta")
+    condicion_actual: str = Field(..., description="Condición meteorológica actual")
+    es_adverso_ahora: bool = Field(..., description="Si ya hay niebla o tormenta ahora mismo")
+    modelo_calibrado: bool = Field(..., description="Si la probabilidad proviene de un modelo calibrado")
+    metar: str = Field(..., description="METAR crudo usado")
+    observacion: Optional[str] = Field(None, description="Hora de la observación METAR (UTC)")
+    features_imputadas: List[str] = Field(default=[], description="Variables estimadas por no venir en el METAR")
+    generado: str = Field(..., description="Timestamp de generación del pronóstico")
+
+    model_config = ConfigDict(json_schema_extra={
+        "example": {
+            "icao": "SKBO",
+            "horizonte_horas": 3,
+            "objetivo": "niebla o tormenta",
+            "probabilidad": 0.34,
+            "nivel": "MODERADO",
+            "alerta": False,
+            "condicion_actual": "niebla",
+            "es_adverso_ahora": True,
+            "modelo_calibrado": True,
+            "metar": "METAR SKBO 230600Z 00000KT 0500 FG OVC002 11/11 Q1027",
+            "observacion": "2026-07-23T06:00:00+00:00",
+            "features_imputadas": ["turbulencia", "estado_pista"],
+            "generado": "2026-07-23T06:05:00+00:00"
+        }
+    })
+
+
 # ==================== GENERIC SCHEMAS ====================
 
 class HealthResponse(BaseModel):

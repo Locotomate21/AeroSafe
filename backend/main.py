@@ -10,6 +10,7 @@ from api.dependencies import rate_limiter, verify_api_key
 from api.routes.risk_routes import router as risk_router
 from api.routes.weather_routes import router as weather_router
 from api.routes.dashboard_routes import router as dashboard_router
+from api.routes.forecast_routes import router as forecast_router
 from core.config import settings
 from core.logging import get_logger
 from database.connection import init_db
@@ -178,6 +179,10 @@ app.include_router(
 )
 app.include_router(
     dashboard_router, prefix="/api/v1/dashboard", tags=["Dashboard"],
+    dependencies=protegido,
+)
+app.include_router(
+    forecast_router, prefix="/api/v1/forecast", tags=["Forecast"],
     dependencies=protegido,
 )
 

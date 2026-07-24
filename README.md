@@ -87,8 +87,38 @@ backend/
 | `POST` | `/api/v1/risk/predict/airport/{icao}` | Riesgo con el clima actual del aeropuerto |
 | `GET` | `/api/v1/risk/history` | Historial de predicciones persistidas |
 | `GET` | `/api/v1/risk/stats` | Estadísticas agregadas por periodo |
+| `GET` | `/api/v1/forecast/{icao}` | **Pronóstico de niebla/tormenta a 3h** (probabilidad calibrada) |
 | `GET` | `/api/v1/weather/airport/{icao}/metar` | METAR del aeropuerto |
 | `GET` | `/health` | Estado real de modelo y base de datos |
+
+Dos modelos, dos endpoints (ver [MODEL_CARD](backend/ml/MODEL_CARD.md)):
+
+- **`/risk/predict`** clasifica la condición **actual** (modelo legado,
+  datos sintéticos — con las limitaciones documentadas).
+- **`/forecast/{icao}`** predice el **futuro** a 3 horas con el modelo
+  entrenado sobre METAR reales y **calibrado**. Es el recomendado.
+
+### Ejemplo — pronóstico
+
+```bash
+curl http://localhost:8000/api/v1/forecast/SKBO
+```
+
+```json
+{
+  "icao": "SKBO",
+  "horizonte_horas": 3,
+  "objetivo": "niebla o tormenta",
+  "probabilidad": 0.34,
+  "nivel": "MODERADO",
+  "alerta": false,
+  "condicion_actual": "niebla",
+  "modelo_calibrado": true
+}
+```
+
+La `probabilidad` está calibrada: 0.34 significa ~34% de ocurrencia real.
+Aeropuertos soportados: SKBO, SKRG, SKPS, SKMZ.
 
 ### Ejemplo
 

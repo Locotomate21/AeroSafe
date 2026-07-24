@@ -240,6 +240,12 @@ DagsHub si se configuran las credenciales en `.env`).
 Resuelve las dos limitaciones del clasificador: la circularidad (§3) y la
 inutilidad de "predecir" una condición que ya se lee en el METAR.
 
+Se sirve en producción vía `GET /api/v1/forecast/{icao}`: descarga el
+METAR actual del aeropuerto, aplica el mismo pipeline de features que el
+entrenamiento (`features/forecast_features.py`, compartido para evitar
+desajuste train/serve) y devuelve la probabilidad **calibrada**.
+Aeropuertos servidos: SKBO, SKRG, SKPS, SKMZ.
+
 ### Tarea
 
 Predecir la **presencia de niebla o tormenta en SKBO dentro de 3 horas**,

@@ -46,31 +46,16 @@ import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from features.wx_codes import intensidad_precipitacion  # noqa: E402
+from features.forecast_features import (  # noqa: E402
+    FEATURES_BASE,
+    FEATURES_DERIVADAS,
+    add_forecast_features,
+    es_adverso,
+)
 
 BACKEND_DIR = Path(__file__).resolve().parents[2]
 METAR_DIR = BACKEND_DIR / "data" / "metar"
 SALIDA_DIR = BACKEND_DIR / "data" / "forecast"
-
-CONDICIONES_ADVERSAS = ("niebla", "tormenta")
-
-# Features disponibles en el instante t para pronosticar t+N.
-#
-# NO se incluye 'descripcion': es la variable de la que se deriva la
-# etiqueta. Incluirla reintroduciria la circularidad por la puerta de
-# atras (el modelo veria la niebla actual, muy correlacionada con la
-# niebla de dentro de 1-3h). Se conserva solo para calcular la etiqueta y
-# las features de persistencia/tendencia, no como predictor directo.
-FEATURES_BASE = [
-    "temperatura", "punto_rocio", "humedad", "viento", "rafagas",
-    "direccion_viento", "visibilidad", "presion", "techo_nubes",
-    "viento_cruzado", "altitud_densidad",
-    "hora", "mes", "es_noche",
-]
-
-
-def es_adverso(descripcion: pd.Series) -> pd.Series:
-    return descripcion.isin(CONDICIONES_ADVERSAS).astype(int)
 
 
 def construir(df: pd.DataFrame, horizonte: int) -> pd.DataFrame:
@@ -82,11 +67,11 @@ def construir(df: pd.DataFrame, horizonte: int) -> pd.DataFrame:
     """
     df = df.sort_values("timestamp").drop_duplicates("timestamp").reset_index(drop=True)
 
-    # Precipitacion como escala ordinal desde el METAR crudo (la columna
-    # numerica es cero en todo el archivo).
-    df["precip_intensidad"] = df["metar"].apply(intensidad_precipitacion)
-
-    df["adverso"] = es_adverso(df["descripcion"])
+    # Las features derivadas se calculan con la MISMA funcion que usa el
+    # servicio de la API (features.forecast_features), para que
+    # entrenamiento e inferencia coincidan exactamente.
+    df = add_forecast_features(df)
+    df["adverso"] = df["adverso_actual"]
 
     # Tabla del futuro: la etiqueta objetivo indexada por su propio
     # timestamp, que luego se busca en t + horizonte.
@@ -99,31 +84,7 @@ def construir(df: pd.DataFrame, horizonte: int) -> pd.DataFrame:
         futuro, left_on="t_objetivo", right_on="t_futuro", how="inner"
     )
 
-    # --- Features de contexto temporal ---
-    # La persistencia (condicion actual) es la senal mas fuerte a corto
-    # plazo; se incluye explicitamente como feature en vez de dejar que
-    # el modelo la infiera.
-    emparejado["adverso_actual"] = emparejado["adverso"]
-
-    # Ciclicas: hora y mes son circulares (23h esta al lado de 0h). Sin
-    # esto el modelo trata la medianoche y el mediodia como los extremos
-    # mas lejanos posibles.
-    emparejado["hora_sin"] = np.sin(2 * np.pi * emparejado["hora"] / 24)
-    emparejado["hora_cos"] = np.cos(2 * np.pi * emparejado["hora"] / 24)
-    emparejado["mes_sin"] = np.sin(2 * np.pi * emparejado["mes"] / 12)
-    emparejado["mes_cos"] = np.cos(2 * np.pi * emparejado["mes"] / 12)
-
-    # Spread temperatura-rocio: proxy directo de saturacion, y por tanto
-    # de formacion de niebla. Cuando se acerca a cero, el aire esta
-    # saturado.
-    emparejado["spread_t_td"] = emparejado["temperatura"] - emparejado["punto_rocio"]
-
-    columnas = (
-        FEATURES_BASE
-        + ["precip_intensidad", "adverso_actual",
-           "hora_sin", "hora_cos", "mes_sin", "mes_cos", "spread_t_td"]
-        + ["objetivo", "timestamp"]
-    )
+    columnas = FEATURES_BASE + FEATURES_DERIVADAS + ["objetivo", "timestamp"]
     resultado = emparejado[columnas].dropna(subset=FEATURES_BASE + ["objetivo"])
     return resultado.reset_index(drop=True)
 
