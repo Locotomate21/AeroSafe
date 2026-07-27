@@ -446,6 +446,35 @@ desenlace para un objetivo que sí ocurra.
 python -m ml.scripts.transfer_matrix --aeropuertos SKBO SKRG SKBQ SKCG
 ```
 
+### Verificación en el idioma de la meteorología aeronáutica (OMM)
+
+PR-AUC y F1 son métricas de machine learning; un meteorólogo operativo o
+un regulador verifica con las métricas de la OMM sobre la tabla de
+contingencia. Sobre el test 2023-2026, con umbral que maximiza el CSI en
+train (`ml/scripts/verify_forecast.py`):
+
+| Aeropuerto | Tasa base | POD | FAR | CSI | HSS | vs persistencia (CSI) |
+|---|---|---|---|---|---|---|
+| SKBO | 5.4% | 0.40 | 0.71 | 0.20 | 0.29 | 0.12 |
+| SKRG | 12.6% | 0.58 | 0.55 | 0.34 | 0.42 | — |
+| SKPS | 11.7% | 0.58 | 0.57 | 0.33 | 0.42 | — |
+| SKMZ | 24.8% | 0.63 | 0.50 | 0.39 | 0.39 | — |
+
+- **POD** (detección): el modelo capta el 40-63% de los episodios
+  adversos, casi el doble que la persistencia (SKBO: 0.40 vs 0.22).
+- **Brier Skill Score positivo** (SKBO +0.14): bate a la climatología.
+- **Los aeropuertos con más niebla son más fáciles**: SKMZ (25% de niebla)
+  logra CSI 0.39; SKBO (5.4%) solo 0.20. Coherente con la estadística de
+  eventos raros.
+
+**La limitación honesta — FAR alta.** Entre el 50% y el 71% de las
+alertas del modelo no se materializan. Para una herramienta operacional,
+esa tasa de falsas alarmas es alta: provoca fatiga de alertas, el motivo
+número uno por el que un controlador deja de mirar un sistema. Aunque
+bate a la persistencia (FAR 0.79 en SKBO), reducir la FAR —no subir la
+POD— es la prioridad para uso real. Es previsiblemente donde más
+ayudarían las features de tendencia o de contexto espacial.
+
 ### Calibración de probabilidades
 
 El modelo base usa `class_weight='balanced'`, que le da buen poder de
