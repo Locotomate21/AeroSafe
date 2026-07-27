@@ -40,15 +40,16 @@ class METARTAFService:
             raise ValueError("Código ICAO debe tener 4 caracteres")
         
         try:
-            # Obtener METAR de NOAA
+            # Parametros de la API de NOAA (aviationweather.gov).
+            # 'taf' y 'date' NO son parametros validos de este endpoint y
+            # provocaban un 400 Bad Request; se eliminaron. Con 'ids',
+            # 'format' y 'hours' basta.
             params = {
                 "ids": icao,
                 "format": "raw",
-                "taf": "false",
                 "hours": "2",
-                "date": "0"
             }
-            
+
             async with httpx.AsyncClient() as client:
                 response = await client.get(
                     self.METAR_URL,
@@ -57,6 +58,12 @@ class METARTAFService:
                 )
                 response.raise_for_status()
                 raw_metar = response.text.strip()
+
+            # NOAA puede devolver varias observaciones (una por hora), la
+            # mas reciente primero. Se toma la primera linea: el METAR
+            # vigente.
+            if raw_metar:
+                raw_metar = raw_metar.splitlines()[0].strip()
             
             if not raw_metar or "No METAR" in raw_metar:
                 logger.warning(f"No hay METAR disponible para {icao}")
@@ -193,16 +200,39 @@ class METARTAFService:
                 wind_data = self._parse_wind(parts[i])
                 parsed.update(wind_data)
                 i += 1
-            
-            # Visibilidad
-            if i < len(parts) and parts[i].isdigit():
+
+            # Grupo de direccion de viento variable (dddVddd, p. ej.
+            # '080V140'): informativo, no aporta al modelo. Se salta para
+            # que no bloquee el parseo de la visibilidad.
+            if i < len(parts) and re.fullmatch(r"\d{3}V\d{3}", parts[i]):
+                i += 1
+
+            # Visibilidad. Tres formas:
+            #   - CAVOK: "Ceiling And Visibility OK" -> vis >= 10 km, sin
+            #     nubes significativas ni fenomenos. Muy comun en METAR AUTO.
+            #   - 4 digitos, con posible sufijo (9999, 9999NDV, 0500).
+            #   - En millas terrestres (US): se ignora aqui, el modelo usa
+            #     metros y las estaciones colombianas reportan en metros.
+            if i < len(parts) and parts[i] == "CAVOK":
+                parsed["visibility_m"] = 9999
+                parsed["visibility_km"] = 9.999
+                parsed["cavok"] = True
+                i += 1
+            elif i < len(parts) and re.match(r"^\d{4}(NDV)?$", parts[i]):
+                vis = int(parts[i][:4])
+                parsed["visibility_m"] = vis
+                parsed["visibility_km"] = vis / 1000
+                i += 1
+            elif i < len(parts) and parts[i].isdigit():
                 parsed["visibility_m"] = int(parts[i])
                 parsed["visibility_km"] = int(parts[i]) / 1000
                 i += 1
-            
-            # Nubes
+
+            # Nubes. El sufijo '///' (tipo no determinado por estacion
+            # automatica) se tolera: _parse_clouds lee solo cobertura y
+            # altura. Con CAVOK no hay grupo de nubes.
             clouds = []
-            while i < len(parts) and parts[i][:3] in ["SKC", "CLR", "FEW", "SCT", "BKN", "OVC", "VV"]:
+            while i < len(parts) and parts[i][:3] in ["SKC", "CLR", "FEW", "SCT", "BKN", "OVC", "VV", "NSC", "NCD"]:
                 cloud_data = self._parse_clouds(parts[i])
                 if cloud_data:
                     clouds.append(cloud_data)

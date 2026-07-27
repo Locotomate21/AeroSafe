@@ -65,6 +65,41 @@ def test_visibilidad_reducida(parser):
     assert r["visibility_m"] == 1200
 
 
+def test_cavok(parser):
+    """
+    CAVOK ('Ceiling And Visibility OK') es un codigo, no un numero:
+    visibilidad >= 10 km y sin nubes significativas. Muy comun en METAR
+    AUTO. Sin manejarlo, el servicio de pronostico rechazaba SKPS y SKMZ
+    con un 422 porque no encontraba visibilidad.
+    """
+    r = parser._parse_metar("METAR SKPS 270100Z AUTO VRB01KT CAVOK 18/16 Q1021")
+
+    assert r["visibility_m"] == 9999
+    assert r["cavok"] is True
+    assert r["temperature_c"] == 18
+    assert r["dewpoint_c"] == 16
+
+
+def test_grupo_viento_variable_no_bloquea_visibilidad(parser):
+    """
+    El grupo de viento variable (dddVddd, p. ej. '080V140') aparece entre
+    el viento y la visibilidad. Si no se salta, el parser lo confunde y no
+    lee la visibilidad que viene detras.
+    """
+    r = parser._parse_metar("METAR SKMZ 270100Z AUTO 11003KT 080V140 CAVOK 16/14 Q1027")
+
+    assert r["visibility_m"] == 9999
+    assert r["temperature_c"] == 16
+
+
+def test_visibilidad_con_sufijo_ndv(parser):
+    """'9999NDV' = 9999 m con 'No Directional Variation'; el sufijo se ignora."""
+    r = parser._parse_metar("METAR SKMZ 270000Z AUTO 11003KT 9999NDV BKN064/// 17/16 Q1026")
+
+    assert r["visibility_m"] == 9999
+    assert r["temperature_c"] == 17
+
+
 def test_capas_de_nubes(parser):
     r = parser._parse_metar(METAR_SKBO)
 
