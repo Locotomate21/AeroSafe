@@ -496,11 +496,46 @@ el límite lo marca la **fuente de información**, no la cantidad de datos
 ni la ingeniería de features sobre ellos.
 
 Para romper el techo haría falta información que una estación de
-superficie no ve: **satélite** (GOES, canales de niebla nocturna que
-detectan la formación de niebla), **modelos numéricos** (GFS/ERA5: la
-configuración sinóptica, la inversión térmica) o **estaciones vecinas
-aguas arriba**. Todas gratuitas; ninguna probada aún. Es el trabajo
-futuro con mayor potencial.
+superficie no ve: satélite, modelos numéricos (GFS/ERA5) o estaciones
+vecinas aguas arriba. Todas gratuitas.
+
+### Qué NO sube el techo: satélite GOES-16 (probado)
+
+Se probó la vía más prometedora: el canal clásico de niebla/estrato bajo
+nocturno de GOES-16, la diferencia de temperatura de brillo entre las
+bandas 7 (3.9 µm) y 13 (10.3 µm). Para niebla de agua esa BTD debería ser
+netamente negativa; en cielo despejado, cercana a cero.
+
+Sobre 16 casos reales en SKBO (8 niebla densa, 8 despejado, 2020,
+madrugada, píxel geolocalizado y verificado):
+
+| | Media BTD | Rango |
+|---|---|---|
+| Niebla | +0.83 K | [−1.03, +3.49] |
+| Despejado | +0.10 K | [−1.04, +1.95] |
+
+Las distribuciones **se solapan casi por completo** y la niebla da BTD
+incluso ligeramente más positiva —lo contrario de la firma esperada—. **La
+señal no está.** La causa es física: la niebla de radiación de la sabana
+de Bogotá es **somera** (decenas de metros) y se forma sobre una ciudad
+grande y cálida; un píxel de GOES de **2 km** promedia aeropuerto, urbe y
+terreno, y la niebla poco profunda no domina la radiancia. La técnica BTD
+funciona para estrato/niebla marina que llena el píxel, no para niebla de
+valle somera sobre terreno urbano.
+
+Limitaciones del test: solo se probó la BTD nocturna (el canal estándar
+de niebla) en 2020. Otros productos, el canal visible diurno u otros
+satélites de mayor resolución no se descartan, pero el método de
+referencia falla con claridad.
+
+**Conclusión acumulada sobre el techo.** Tres palancas probadas
+empíricamente, tres resultados negativos: más METAR (curva de
+aprendizaje), features de tendencia, y satélite GOES. El techo (~0.32
+PR-AUC, FAR ~0.71 en SKBO) es robusto. Lo que queda sin probar y con
+potencial: **modelos numéricos** (GFS/ERA5, que ven la configuración
+sinóptica y la inversión térmica) y **red de estaciones vecinas**. Y, por
+el lado de la etiqueta, **datos de desenlace operacional** (desvíos,
+go-arounds) para predecir impacto en vez del METAR futuro.
 
 ### Calibración de probabilidades
 
