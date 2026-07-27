@@ -1,16 +1,25 @@
 # AeroSafe
 
-Sistema de predicción de riesgo meteorológico para operación aeronáutica.
-API REST sobre un modelo de clasificación entrenado con variables
-aeronáuticas (viento cruzado, altitud de densidad, techo de nubes,
-cizalladura), pensado para el aeropuerto El Dorado (SKBO).
+Pronóstico de niebla y tormenta para operación aeronáutica. API REST que,
+a partir del METAR actual de un aeropuerto, predice la **probabilidad
+calibrada** de niebla o tormenta en las próximas 3 horas.
 
-> **Proyecto académico.** El modelo se entrenó con datos sintéticos y no
-> es apto para decisiones operacionales reales. Antes de citar cualquier
-> cifra de rendimiento, leer [`backend/ml/MODEL_CARD.md`](backend/ml/MODEL_CARD.md),
-> que documenta una limitación importante: la accuracy del 94 % mide
-> fidelidad a la función que generó las etiquetas, no capacidad
-> predictiva sobre condiciones reales.
+Entrenado sobre **~180.000 observaciones METAR reales** de aeropuertos
+colombianos (IEM/NOAA, 2005-2026), con validación temporal, calibración
+de probabilidades y estudio de generalización entre aeropuertos.
+
+> **Proyecto académico.** Es un prototipo de investigación validado, no un
+> sistema operacional certificado. Antes de citar cualquier cifra, leer
+> [`backend/ml/MODEL_CARD.md`](backend/ml/MODEL_CARD.md): documenta el
+> rendimiento honesto (bate a la persistencia pero con techo modesto y
+> tasa de falsas alarmas alta), los límites de generalización y qué
+> faltaría para uso real (validación contra desvíos, aval del IDEAM,
+> safety case bajo RAC/Anexo 3 OACI).
+>
+> Contiene además un **clasificador legado** entrenado con datos
+> sintéticos, conservado por transparencia: su accuracy del 94 % es
+> circular (un árbol de profundidad 3 alcanza el 95.9 % de su
+> rendimiento) y **no** mide capacidad predictiva real.
 
 ---
 
@@ -55,26 +64,29 @@ backend/
 │   └── routes/             risk, weather, dashboard
 ├── core/                   Configuración (pydantic-settings) y logging
 ├── services/
-│   ├── ml_service_v2.py    Carga del modelo e inferencia
+│   ├── forecast_service.py  Pronóstico calibrado desde el METAR actual
 │   ├── metar_taf_service.py  Descarga y parseo de METAR/TAF (NOAA)
+│   ├── ml_service_v2.py    Clasificador legado (condición actual)
 │   └── weather_service.py  Cliente de OpenWeather
 ├── features/
 │   ├── schema.py           Contrato de las 26 features base
-│   ├── build_features.py   Pipeline de features (29 columnas, orden congelado)
+│   ├── forecast_features.py  21 features del pronóstico (train == serve)
+│   ├── airports.py         Catálogo + cabecera de pista activa
+│   ├── wx_codes.py         Intensidad de precipitación desde el METAR
+│   ├── build_features.py   Pipeline del clasificador (29 columnas)
 │   ├── defaults.py         Completado de payloads parciales
-│   └── adapters/           OpenWeather -> schema canónico
+│   └── adapters/           OpenWeather / METAR -> schema canónico
 ├── models/
-│   ├── models.py           Tablas SQLAlchemy
-│   ├── schemas.py          Schemas Pydantic de la API
-│   └── production/         Artefactos del modelo (versionados con DVC)
+│   ├── forecast/           Modelos de pronóstico calibrados (DVC)
+│   └── production/          Clasificador legado (DVC)
 ├── database/               Conexión, base y repositorios
 ├── batch/                  Predicción por lotes sobre ficheros
 ├── ml/
-│   ├── MODEL_CARD.md       Alcance y limitaciones del modelo
-│   ├── scripts/            Generación de dataset, entrenamiento, evaluación
+│   ├── MODEL_CARD.md       Rendimiento, límites y hallazgos (leer primero)
+│   ├── scripts/            Recolección METAR, pronóstico, verificación
 │   └── config/             Configuración de MLflow / DagsHub
-├── data/dataset/           Datos (versionados con DVC)
-└── tests/                  123 tests
+├── data/                   METAR, datasets de pronóstico (DVC)
+└── tests/                  208 tests
 ```
 
 ---
@@ -160,26 +172,46 @@ Dos campos merecen atención:
 cd backend
 
 pip install -r requirements-dev.txt
-pytest                                   # 123 tests, cobertura mínima 60%
+pytest                                   # 208 tests, cobertura mínima 60%
 pytest tests/test_api_integration.py -v  # solo integración
 ```
 
-### Entrenamiento y evaluación
+### Pipeline de pronóstico (datos reales)
 
 ```bash
 pip install -r requirements-ml.txt
+dvc pull                                             # datos y modelos
 
-dvc pull                                          # datos y modelos
+# 1. recolectar METAR histórico de un aeropuerto (IEM, gratis, sin key)
+python -m ml.scripts.collect_metar_history --icao SKBO --desde 2005
+# 2. construir el dataset de pronóstico (features en t, etiqueta en t+3h)
+python -m ml.scripts.build_forecast_dataset --icao SKBO --horizonte 3
+# 3. entrenar y evaluar contra el baseline de persistencia
+python -m ml.scripts.train_forecast --icao SKBO --horizonte 3
+# 4. calibrar las probabilidades (Brier -67%, ECE -96%)
+python -m ml.scripts.calibrate_forecast --icao SKBO --horizonte 3
+# 5. verificar con métricas OMM (POD, FAR, CSI, HSS, BSS)
+python -m ml.scripts.verify_forecast --icao SKBO --horizonte 3
 
-python -m ml.scripts.evaluate_model               # baselines + circularidad
-python -m ml.scripts.validate_with_metar --offline  # contraste con METAR reales
-python -m ml.scripts.train_model_mlflow           # reentrenar
+# generalización entre aeropuertos
+python -m ml.scripts.transfer_matrix --aeropuertos SKBO SKRG SKBQ SKCG
 ```
 
-`evaluate_model` es el que conviene ejecutar antes de citar cualquier
-métrica: compara el modelo contra baselines triviales y mide cuánta de
-su accuracy se explica simplemente reconstruyendo las reglas con las que
-se etiquetó el dataset.
+Los experimentos quedan en MLflow. El **model card** documenta cada
+resultado con su baseline honesto: el pronóstico bate a la persistencia,
+la calibración vuelve las probabilidades usables, la generalización
+funciona entre aeropuertos análogos con datos, y el techo (~0.32 PR-AUC)
+resiste a más datos, features de tendencia y satélite GOES.
+
+### Clasificador legado
+
+```bash
+python -m ml.scripts.evaluate_model               # baselines + circularidad
+python -m ml.scripts.validate_with_metar --offline
+```
+
+`evaluate_model` mide cuánta de la accuracy del clasificador se explica
+reconstruyendo las reglas con las que se etiquetó su dataset sintético.
 
 ---
 
@@ -201,37 +233,55 @@ registra en el log cada punto débil que encuentre.
 
 ---
 
-## Estado actual
+## Resultados del pronóstico
+
+Todo medido sobre un conjunto de test **temporal** (2023-2026, posterior
+a todo el entrenamiento — sin fuga de futuro). Detalle en el
+[model card](backend/ml/MODEL_CARD.md).
+
+- **Bate al baseline operacional.** Frente a la persistencia ("dentro de
+  3 h habrá lo mismo que ahora"), el modelo **duplica la detección**
+  (POD 0.40 vs 0.22 en SKBO) con *skill* positivo (Brier Skill Score +0.14).
+- **Probabilidades calibradas.** La calibración isotónica baja el Brier
+  un 67 % y el ECE un 96 %: un 0.30 significa ~30 % de ocurrencia real.
+- **Generaliza entre aeropuertos análogos.** Un modelo de SKBO transfiere
+  a SKRG reteniendo el ~87 % del margen (ranking), y a Barranquilla
+  (costero, pero con niebla de advección) el 91 %. No transfiere donde el
+  régimen o los datos difieren: la transferibilidad la deciden el
+  fenómeno y los datos, no la geografía.
+- **Techo honesto.** ~0.32 PR-AUC y FAR ~0.71 en SKBO. Tres palancas
+  probadas empíricamente y descartadas (más METAR, features de tendencia,
+  satélite GOES): el límite es la fuente de información, no la cantidad de
+  datos.
+
+## Estado del proyecto
 
 | | |
 |---|---|
-| API | Operativa, 20 rutas |
-| Modelo | RandomForest, 3 clases, 29 features |
-| Tests | 123 pasando, 62 % de cobertura |
-| Docker | `compose config` validado; build sin verificar |
-| Versionado de datos | DVC sobre DagsHub |
-| Tracking de experimentos | MLflow (local o DagsHub) |
+| API | Operativa; `/forecast/{icao}` verificado con METAR real en vivo |
+| Modelo de pronóstico | RandomForest calibrado, SKBO/SKRG/SKPS/SKMZ |
+| Datos | ~180k METAR reales por aeropuerto (IEM), versionados con DVC |
+| Tests | 208 pasando, cobertura mínima 60 % |
+| Docker | `compose config` validado; build sin verificar (daemon caído) |
+| Tracking | MLflow (local o DagsHub) |
 
-### Limitaciones conocidas
+## Qué faltaría para uso operacional real
 
-Documentadas en detalle en [`backend/ml/MODEL_CARD.md`](backend/ml/MODEL_CARD.md):
+El model card lo detalla; en resumen, **no es sobre el modelo**:
 
-1. **El dataset es circular.** Las etiquetas las genera una función
-   determinista de umbrales; un árbol de decisión de profundidad 3
-   alcanza el 95.9 % del rendimiento del RandomForest. La accuracy no
-   mide capacidad predictiva real.
-2. **Desajuste de distribución.** El generador tope la visibilidad en
-   9.996 m, pero el METAR usa el código `9999` para "10 km o más", el
-   valor más frecuente en condiciones normales. El modelo extrapola en el
-   caso más común.
-3. **21 de 26 features se imputan** en una petición típica de la API.
-4. **Sin validación contra desenlaces reales** (desvíos, cancelaciones,
-   go-arounds).
+1. **Validar contra desenlaces reales** (desvíos, go-arounds), no contra
+   el METAR futuro. Requiere datos de la Aerocivil/aerolíneas.
+2. **Benchmark contra el TAF oficial** — bloqueado: el TAF histórico
+   colombiano no está en archivos abiertos, requeriría acceso al IDEAM.
+3. **Reducir la tasa de falsas alarmas** (hoy 50-71 %): es lo que provoca
+   fatiga de alertas en un controlador.
+4. **Marco regulatorio**: OACI Anexo 3, RAC, safety case bajo el SMS del
+   proveedor de servicios de navegación aérea.
 
 ---
 
 ## Licencia y uso
 
-Proyecto académico. No usar para decisiones operacionales aeronáuticas.
+Proyecto académico. **No usar para decisiones operacionales aeronáuticas.**
 La información oficial para operación de vuelo es el METAR/TAF publicado
-por la autoridad aeronáutica correspondiente.
+por la autoridad aeronáutica correspondiente (en Colombia, IDEAM/Aerocivil).
