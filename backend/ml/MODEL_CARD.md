@@ -470,9 +470,20 @@ train (`ml/scripts/verify_forecast.py`):
 **La limitación honesta — FAR alta.** Entre el 50% y el 71% de las
 alertas del modelo no se materializan. Para una herramienta operacional,
 esa tasa de falsas alarmas es alta: provoca fatiga de alertas, el motivo
-número uno por el que un controlador deja de mirar un sistema. Aunque
-bate a la persistencia (FAR 0.79 en SKBO), reducir la FAR —no subir la
-POD— es la prioridad para uso real.
+número uno por el que un controlador deja de mirar un sistema.
+
+El envelope de operación (`verify_forecast.py`) muestra que **no existe un
+punto con POD alta y FAR baja a la vez**: subir el umbral baja la FAR pero
+colapsa la detección. La FAR no se puede reducir sin sacrificar la POD;
+es el mismo techo de discriminación del modelo, no un parámetro mal
+elegido.
+
+La respuesta correcta a esto **no es un umbral mejor sino la probabilidad
+calibrada**: en vez de que el sistema decida con un corte fijo, entrega un
+número honesto ("34% de ocurrencia real") y cada operador aplica su propia
+tolerancia —una torre saturada actúa desde 60%, una operación crítica
+desde 20%—. Es más profesional y honesto que un semáforo fijo, y es
+justamente lo que la calibración habilita.
 
 ### Qué NO sube el techo: features de tendencia (probado)
 

@@ -152,6 +152,25 @@ def main() -> int:
     print(f"  Brier de climatologia : {bs_clim:.4f}  (predecir siempre {tasa_base:.1%})")
     print(f"  Brier Skill Score     : {bss:+.3f}   (>0 = mejor que climatologia)")
 
+    # --- Envelope de operacion: trade-off POD/FAR por umbral ---
+    # Un regulador no quiere un unico punto sino la curva completa: que
+    # detecccion se logra a cada nivel de falsas alarmas. La probabilidad
+    # esta calibrada, asi que el umbral se interpreta como probabilidad de
+    # ocurrencia real.
+    print("\n" + "-" * 72)
+    print("ENVELOPE DE OPERACION (prob calibrada -> deteccion vs falsas alarmas)")
+    print("-" * 72)
+    anios = max(test.timestamp.dt.year.nunique(), 1)
+    print(f"  {'umbral':>7s}{'POD':>7s}{'FAR':>7s}{'CSI':>7s}{'alertas/anio':>13s}")
+    for u in (0.05, 0.10, 0.20, 0.30, 0.50, 0.70):
+        mm = contingencia(y_test, (prob_test >= u).astype(int))
+        alertas = mm["a"] + mm["b"]
+        print(f"  {u:>7.2f}{mm['POD']:>7.2f}{mm['FAR']:>7.2f}{mm['CSI']:>7.2f}"
+              f"{alertas / anios:>13.0f}")
+    print("\n  No hay un punto con POD alta y FAR baja a la vez: es el limite del")
+    print("  modelo. La probabilidad calibrada permite que cada operador elija su")
+    print("  propio umbral segun su tolerancia (torre saturada vs operacion critica).")
+
     # --- Lectura ---
     print("\n" + "-" * 72)
     print("LECTURA (en el idioma del regulador)")
