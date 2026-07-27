@@ -472,8 +472,35 @@ alertas del modelo no se materializan. Para una herramienta operacional,
 esa tasa de falsas alarmas es alta: provoca fatiga de alertas, el motivo
 número uno por el que un controlador deja de mirar un sistema. Aunque
 bate a la persistencia (FAR 0.79 en SKBO), reducir la FAR —no subir la
-POD— es la prioridad para uso real. Es previsiblemente donde más
-ayudarían las features de tendencia o de contexto espacial.
+POD— es la prioridad para uso real.
+
+### Qué NO sube el techo: features de tendencia (probado)
+
+Hipótesis razonable: ver la **tendencia** de las últimas horas (no solo
+la observación actual) debería predecir mejor la niebla de radiación, que
+se forma gradualmente. Se probó empíricamente añadiendo 18 features de
+tendencia (spread T-rocío, presión, visibilidad, viento y humedad a 1/2/3
+h, más la condición adversa reciente) y reentrenando sobre el mismo split.
+
+Resultado sobre SKBO, mismo conjunto:
+
+| | PR-AUC | POD | FAR | CSI |
+|---|---|---|---|---|
+| sin tendencia | 0.321 | 0.447 | 0.717 | 0.210 |
+| con tendencia | 0.325 | 0.458 | 0.701 | 0.221 |
+
+La mejora (+0.004 PR-AUC, −0.015 FAR) está dentro del ruido. **El techo no
+se debe a falta de contexto temporal de la propia estación.** Junto con
+la curva de aprendizaje (más METAR tampoco ayuda), la conclusión es que
+el límite lo marca la **fuente de información**, no la cantidad de datos
+ni la ingeniería de features sobre ellos.
+
+Para romper el techo haría falta información que una estación de
+superficie no ve: **satélite** (GOES, canales de niebla nocturna que
+detectan la formación de niebla), **modelos numéricos** (GFS/ERA5: la
+configuración sinóptica, la inversión térmica) o **estaciones vecinas
+aguas arriba**. Todas gratuitas; ninguna probada aún. Es el trabajo
+futuro con mayor potencial.
 
 ### Calibración de probabilidades
 
