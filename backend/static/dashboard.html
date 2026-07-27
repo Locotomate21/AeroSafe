@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AeroSafe — Pronóstico</title>
+<style>
+  :root {
+    color-scheme: light;
+    --plane:       #f9f9f7;
+    --surface:     #fcfcfb;
+    --ink:         #0b0b0b;
+    --ink-2:       #52514e;
+    --muted:       #898781;
+    --grid:        #e1e0d9;
+    --border:      rgba(11,11,11,0.10);
+    --bar-track:   #e1e0d9;
+    --bar-fill:    #2a78d6;   /* azul secuencial: magnitud */
+    /* status (paleta fija, nunca tematizada) */
+    --good:        #0ca30c;
+    --warning:     #fab219;
+    --serious:     #ec835a;
+    --critical:    #d03b3b;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:where(:not([data-theme="light"])) {
+      color-scheme: dark;
+      --plane:     #0d0d0d;
+      --surface:   #1a1a19;
+      --ink:       #ffffff;
+      --ink-2:     #c3c2b7;
+      --muted:     #898781;
+      --grid:      #2c2c2a;
+      --border:    rgba(255,255,255,0.10);
+      --bar-track: #2c2c2a;
+      --bar-fill:  #3987e5;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --plane: #0d0d0d; --surface: #1a1a19; --ink: #fff; --ink-2: #c3c2b7;
+    --muted: #898781; --grid: #2c2c2a; --border: rgba(255,255,255,0.10);
+    --bar-track: #2c2c2a; --bar-fill: #3987e5;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--plane); color: var(--ink);
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+    line-height: 1.5; padding: 24px;
+  }
+  .wrap { max-width: 1000px; margin: 0 auto; }
+
+  header { margin-bottom: 4px; }
+  h1 { font-size: 1.5rem; margin: 0 0 2px; letter-spacing: -0.01em; }
+  .sub { color: var(--ink-2); font-size: 0.95rem; margin: 0; }
+  .proto {
+    display: inline-block; margin-top: 10px; font-size: 0.75rem;
+    color: var(--ink-2); border: 1px solid var(--border);
+    border-radius: 999px; padding: 3px 10px;
+  }
+
+  .grid {
+    display: grid; gap: 16px; margin-top: 22px;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  }
+  .card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 12px; padding: 18px 18px 16px;
+  }
+  .card-top { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+  .icao { font-size: 1.15rem; font-weight: 650; }
+  .name { color: var(--muted); font-size: 0.8rem; }
+
+  .prob-row { display: flex; align-items: baseline; gap: 8px; margin: 14px 0 4px; }
+  .prob { font-size: 2.4rem; font-weight: 650; letter-spacing: -0.02em; }
+  .prob-lbl { color: var(--ink-2); font-size: 0.82rem; }
+
+  .track { height: 8px; background: var(--bar-track); border-radius: 999px; overflow: hidden; }
+  .fill { height: 100%; background: var(--bar-fill); border-radius: 999px; width: 0; transition: width .5s ease; }
+
+  .badge {
+    display: inline-flex; align-items: center; gap: 6px; margin-top: 14px;
+    font-size: 0.82rem; font-weight: 600; padding: 4px 10px; border-radius: 8px;
+    border: 1px solid var(--border);
+  }
+  .badge .dot { width: 9px; height: 9px; border-radius: 50%; flex: none; }
+
+  .meta { margin-top: 14px; font-size: 0.82rem; color: var(--ink-2); }
+  .meta div { margin-top: 3px; }
+  .metar {
+    margin-top: 10px; font-family: ui-monospace, "Cascadia Code", Consolas, monospace;
+    font-size: 0.74rem; color: var(--muted); background: var(--plane);
+    border: 1px solid var(--border); border-radius: 6px; padding: 7px 9px;
+    word-break: break-all;
+  }
+  .card.err { border-color: var(--critical); }
+  .card.err .prob { font-size: 1.1rem; color: var(--ink-2); }
+
+  footer { margin-top: 26px; color: var(--muted); font-size: 0.78rem; border-top: 1px solid var(--grid); padding-top: 12px; }
+  footer a { color: inherit; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>AeroSafe · Pronóstico de niebla o tormenta</h1>
+    <p class="sub">Probabilidad <strong>calibrada</strong> a 3 horas, desde el METAR actual del aeropuerto.</p>
+    <span class="proto">Prototipo de investigación — no apto para decisiones operacionales</span>
+  </header>
+
+  <div class="grid" id="grid"></div>
+
+  <footer>
+    <div id="updated">Cargando…</div>
+    <div style="margin-top:6px">
+      La probabilidad está calibrada: 0.30 ≈ 30 % de ocurrencia real. Cada operador
+      aplica su propia tolerancia. Fuente METAR: NOAA Aviation Weather.
+    </div>
+  </footer>
+</div>
+
+<script>
+const AEROPUERTOS = [
+  ["SKBO", "El Dorado · Bogotá"],
+  ["SKRG", "J. M. Córdova · Rionegro"],
+  ["SKPS", "Antonio Nariño · Pasto"],
+  ["SKMZ", "La Nubia · Manizales"],
+];
+
+// Nivel -> color de status (paleta fija) + icono. Nunca color solo.
+const NIVEL = {
+  MINIMO:   { color: "var(--good)",     icon: "✓", txt: "Mínimo" },
+  BAJO:     { color: "var(--warning)",  icon: "•", txt: "Bajo" },
+  MODERADO: { color: "var(--serious)",  icon: "▲", txt: "Moderado" },
+  ALTO:     { color: "var(--critical)", icon: "⚠", txt: "Alto" },
+};
+
+function card(icao, nombre, d) {
+  if (d.error) {
+    return `<div class="card err">
+      <div class="card-top"><span class="icao">${icao}</span><span class="name">${nombre}</span></div>
+      <div class="prob-row"><span class="prob">Sin dato</span></div>
+      <div class="meta">${d.error}</div></div>`;
+  }
+  const pct = Math.round(d.probabilidad * 100);
+  const n = NIVEL[d.nivel] || NIVEL.MINIMO;
+  return `<div class="card">
+    <div class="card-top"><span class="icao">${icao}</span><span class="name">${nombre}</span></div>
+    <div class="prob-row"><span class="prob">${pct}%</span><span class="prob-lbl">prob. niebla/tormenta +3h</span></div>
+    <div class="track"><div class="fill" style="width:${pct}%"></div></div>
+    <div class="badge"><span class="dot" style="background:${n.color}"></span>${n.icon} ${n.txt}</div>
+    <div class="meta">
+      <div>Ahora: <strong>${d.condicion_actual || "—"}</strong></div>
+      <div>Observación: ${d.observacion ? d.observacion.replace("T"," ").slice(0,16)+"Z" : "—"}</div>
+    </div>
+    <div class="metar">${d.metar || ""}</div>
+  </div>`;
+}
+
+async function traer(icao) {
+  try {
+    const r = await fetch(`/api/v1/forecast/${icao}`);
+    if (!r.ok) {
+      const j = await r.json().catch(() => ({}));
+      return { error: j.detail || `HTTP ${r.status}` };
+    }
+    return await r.json();
+  } catch (e) {
+    return { error: "API no disponible" };
+  }
+}
+
+async function cargar() {
+  const grid = document.getElementById("grid");
+  const datos = await Promise.all(AEROPUERTOS.map(([i]) => traer(i)));
+  grid.innerHTML = AEROPUERTOS.map(([i, n], k) => card(i, n, datos[k])).join("");
+  document.getElementById("updated").textContent =
+    "Actualizado " + new Date().toLocaleString("es-CO") + " · se refresca cada 10 min";
+}
+
+cargar();
+setInterval(cargar, 10 * 60 * 1000);
+</script>
+</body>
+</html>

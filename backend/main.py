@@ -187,6 +187,24 @@ app.include_router(
 )
 
 
+# ==================== DASHBOARD (UI) ====================
+
+from fastapi.responses import FileResponse
+from pathlib import Path as _Path
+
+_DASHBOARD = _Path(__file__).parent / "static" / "dashboard.html"
+
+
+@app.get("/dashboard", tags=["UI"], include_in_schema=False)
+async def dashboard():
+    """
+    Panel visual del pronóstico. Página estática servida desde el propio
+    backend (mismo origen que la API, sin CORS) que consume
+    /api/v1/forecast/{icao} para los aeropuertos soportados.
+    """
+    return FileResponse(_DASHBOARD)
+
+
 # ==================== ROOT ENDPOINTS ====================
 
 @app.get("/", tags=["Root"])
