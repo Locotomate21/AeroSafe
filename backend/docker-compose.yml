@@ -34,6 +34,11 @@ services:
       - HOST=0.0.0.0
       - PORT=8000
       - LOG_FILE=logs/app.log
+      # SQLite en un directorio ESCRIBIBLE por el usuario no-root: /app lo
+      # crea root (via WORKDIR) y el contenedor corre como 'aerosafe', que
+      # no puede escribir alli. /app/data se crea y se cede a aerosafe en
+      # el Dockerfile, y ademas se monta como volumen (persiste en el host).
+      - DATABASE_URL=sqlite:////app/data/aerosafe.db
 
     volumes:
       # Modelos: sin esto el contenedor arranca en modo mock.
