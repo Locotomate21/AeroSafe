@@ -65,33 +65,6 @@ async def verify_api_key(
     return x_api_key
 
 
-async def get_current_user(
-    authorization: Annotated[Optional[str], Header()] = None
-) -> dict:
-    """
-    Obtiene usuario actual desde token JWT (para futuro)
-    
-    Uso:
-        @router.get("/me")
-        def get_me(user: dict = Depends(get_current_user)):
-            return user
-    
-    TODO: Implementar validación JWT real
-    """
-    if not authorization:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Token de autenticación requerido",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-    
-    # TODO: Implementar validación JWT
-    # Por ahora retorna usuario dummy para desarrollo
-    return {
-        "user_id": "dummy_user",
-        "email": "user@aerosafe.com",
-        "role": "analyst"
-    }
 
 
 # ==================== VALIDACIONES ====================

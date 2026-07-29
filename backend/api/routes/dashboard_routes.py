@@ -1,87 +1,81 @@
-from fastapi import APIRouter, HTTPException, Depends, Query
-from typing import Optional
-import logging
-from datetime import datetime, timedelta, timezone
+"""
+Endpoints de agregacion para paneles.
 
-from api.dependencies import validate_icao_code, get_db
+Se conservan solo los que hacen trabajo REAL. Se eliminaron cinco
+endpoints que devolvian datos mock o fabricados (/demo inventaba "342
+predicciones" y una alerta falsa; /statistics, /alerts,
+/recent-predictions y /airport/{icao}/forecast devolvian ceros o texto
+"en desarrollo"). Ademas duplicaban endpoints que ya existen de verdad:
+/health, /api/v1/forecast/{icao}, /api/v1/risk/stats y /risk/history.
+
+Servir datos falsos con apariencia real es justo lo que este proyecto
+evita en todo lo demas.
+"""
+import logging
+from datetime import datetime, timezone
+
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy import func, text
 from sqlalchemy.orm import Session
+
+from api.dependencies import get_db, validate_icao_code
+from models.models import RiskPrediction
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
 
-# ==================== DASHBOARD ENDPOINTS ====================
 
 @router.get("/status")
-async def get_dashboard_status():
+async def get_dashboard_status(db: Session = Depends(get_db)):
     """
-    Estado general del sistema AeroSafe
-    
-    Returns:
-        Estado operacional del sistema y servicios
+    Estado agregado del sistema, con cada campo verificado de verdad.
+
+    A diferencia de la version anterior, no reporta "database: connected"
+    a ciegas ni inventa metricas: hace SELECT 1 y cuenta las predicciones
+    reales en la base.
     """
+    from core.config import settings
+    from services.ml_service_v2 import ml_service_v2
+
+    modelo_ok = ml_service_v2 is not None and ml_service_v2.can_infer()
+
     try:
-        from core.config import settings
-        from pathlib import Path
-        
-        # Verificar componentes
-        model_exists = settings.get_model_path(settings.MODEL_PATH).exists()
-        api_configured = bool(settings.OPENWEATHER_API_KEY)
-        
-        return {
-            "status": "operational",
-            "timestamp": datetime.now(timezone.utc).isoformat(),
-            "version": settings.VERSION,
-            "components": {
-                "api": "healthy",
-                "ml_model": "loaded" if model_exists else "not_found",
-                "weather_api": "configured" if api_configured else "missing_key",
-                "database": "connected"  # TODO: verificar conexión real
-            },
-            "metrics": {
-                "uptime": "N/A",  # TODO: implementar tracking
-                "total_predictions": 0,  # TODO: consultar BD
-                "active_alerts": 0
-            }
-        }
-        
+        db.execute(text("SELECT 1"))
+        total = db.query(func.count(RiskPrediction.id)).scalar() or 0
+        db_ok = True
     except Exception as e:
-        logger.error(f"Error obteniendo estado del dashboard: {str(e)}")
-        raise HTTPException(
-            status_code=500,
-            detail=f"Error al obtener estado: {str(e)}"
-        )
+        logger.error("Dashboard status: fallo de BD: %s", e)
+        db_ok = False
+        total = None
+
+    return {
+        "status": "operational" if (modelo_ok and db_ok) else "degraded",
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "version": settings.VERSION,
+        "components": {
+            "ml_model": "operativo" if modelo_ok else "no_disponible",
+            "weather_api": "configurada" if settings.OPENWEATHER_API_KEY else "sin_clave",
+            "database": "connected" if db_ok else "error",
+        },
+        "metrics": {
+            "total_predictions": total,
+        },
+    }
 
 
 @router.get("/airport/{icao}/status")
-async def get_airport_status(
-    icao: str = Depends(validate_icao_code)
-):
+async def get_airport_status(icao: str = Depends(validate_icao_code)):
     """
-    Estado completo de un aeropuerto con análisis de riesgo
-    
-    Args:
-        icao: Código ICAO del aeropuerto
-        
-    Returns:
-        Clima actual, predicción de riesgo y estado operacional
+    Estado completo de un aeropuerto: clima actual, riesgo e impacto
+    operacional. Agrega el servicio de clima y el clasificador de riesgo.
     """
     try:
-        logger.info(f"Obteniendo estado completo para aeropuerto: {icao}")
-        
-        # Obtener clima actual
         from services.aviation_weather_service import get_airport_weather_data
-        weather_data = await get_airport_weather_data(icao)
-        
-        # Predecir riesgo
         from services.ml_service_v2 import predict_risk_from_weather
-        risk_prediction = await predict_risk_from_weather(weather_data)
-        
-        # Analizar factores operacionales
-        operational_status = _analyze_operational_impact(
-            weather_data, 
-            risk_prediction
-        )
-        
+
+        weather_data = await get_airport_weather_data(icao)
+        risk = await predict_risk_from_weather(weather_data)
+
         return {
             "airport": {
                 "icao": icao.upper(),
@@ -99,277 +93,42 @@ async def get_airport_status(
                 "presion": weather_data.get("presion"),
             },
             "risk_analysis": {
-                "overall_risk": risk_prediction["risk_level"],
-                "confidence": risk_prediction["confidence"],
-                "probabilities": risk_prediction.get("probabilities", {}),
-                "factors": risk_prediction.get("risk_factors", []),
+                "overall_risk": risk["risk_level"],
+                "confidence": risk["confidence"],
+                "probabilities": risk.get("probabilities", {}),
+                "factors": risk.get("risk_factors", []),
+                "model_status": risk.get("model_status"),
             },
-            "operational_impact": operational_status,
-            "recommendations": risk_prediction.get("recommendations", []),
-            "last_updated": datetime.now(timezone.utc).isoformat()
+            "operational_impact": _analyze_operational_impact(weather_data, risk),
+            "recommendations": risk.get("recommendations", []),
+            "last_updated": datetime.now(timezone.utc).isoformat(),
         }
-        
+
     except Exception as e:
-        logger.error(f"Error obteniendo estado de aeropuerto {icao}: {str(e)}")
-        raise HTTPException(
-            status_code=500,
-            detail=f"Error al obtener estado del aeropuerto: {str(e)}"
-        )
+        logger.error("Error obteniendo estado de aeropuerto %s: %s", icao, e)
+        raise HTTPException(status_code=502, detail="Error al obtener el estado del aeropuerto")
 
-
-@router.get("/airport/{icao}/forecast")
-async def get_airport_forecast_dashboard(
-    icao: str = Depends(validate_icao_code),
-    hours: int = Query(default=6, ge=1, le=24, description="Horas de pronóstico")
-):
-    """
-    Pronóstico y tendencia de riesgo para un aeropuerto
-    
-    Args:
-        icao: Código ICAO del aeropuerto
-        hours: Horas de pronóstico (1-24)
-        
-    Returns:
-        Pronóstico meteorológico y tendencia de riesgo
-    """
-    try:
-        # TODO: Implementar pronóstico real con TAF
-        
-        return {
-            "airport": icao.upper(),
-            "forecast_period": f"{hours} hours",
-            "risk_trend": "ESTABLE",  # MEJORANDO, ESTABLE, EMPEORANDO
-            "forecast": {
-                "next_6h": {
-                    "expected_risk": "BAJO",
-                    "weather_summary": "Condiciones favorables",
-                    "alerts": []
-                },
-                "next_12h": {
-                    "expected_risk": "BAJO",
-                    "weather_summary": "Sin cambios significativos",
-                    "alerts": []
-                },
-                "next_24h": {
-                    "expected_risk": "MODERADO",
-                    "weather_summary": "Posible incremento de viento",
-                    "alerts": ["Viento en aumento"]
-                }
-            },
-            "message": "Pronóstico basado en datos históricos - TAF en desarrollo"
-        }
-        
-    except Exception as e:
-        logger.error(f"Error obteniendo pronóstico de {icao}: {str(e)}")
-        raise HTTPException(
-            status_code=500,
-            detail=f"Error al obtener pronóstico: {str(e)}"
-        )
-
-
-@router.get("/alerts")
-async def get_active_alerts(
-    severity: Optional[str] = Query(None, pattern="^(LOW|MODERATE|HIGH|CRITICAL)$"),
-    db: Session = Depends(get_db)
-):
-    """
-    Obtiene alertas activas del sistema
-    
-    Args:
-        severity: Filtrar por severidad (LOW, MODERATE, HIGH, CRITICAL)
-        db: Sesión de base de datos
-        
-    Returns:
-        Lista de alertas activas
-    """
-    try:
-        # TODO: Implementar sistema de alertas en BD
-        
-        return {
-            "total_alerts": 0,
-            "alerts": [],
-            "severity_filter": severity,
-            "message": "Sistema de alertas en desarrollo"
-        }
-        
-    except Exception as e:
-        logger.error(f"Error obteniendo alertas: {str(e)}")
-        raise HTTPException(
-            status_code=500,
-            detail=f"Error al obtener alertas: {str(e)}"
-        )
-
-
-@router.get("/statistics")
-async def get_system_statistics(
-    period_days: int = Query(default=7, ge=1, le=30),
-    db: Session = Depends(get_db)
-):
-    """
-    Estadísticas generales del sistema
-    
-    Args:
-        period_days: Días a analizar (1-30)
-        db: Sesión de base de datos
-        
-    Returns:
-        Estadísticas agregadas del sistema
-    """
-    try:
-        # TODO: Implementar análisis real de BD
-        
-        return {
-            "period": {
-                "days": period_days,
-                "start_date": (datetime.now(timezone.utc) - timedelta(days=period_days)).isoformat(),
-                "end_date": datetime.now(timezone.utc).isoformat()
-            },
-            "predictions": {
-                "total": 0,
-                "by_risk_level": {
-                    "BAJO": 0,
-                    "MODERADO": 0,
-                    "ALTO": 0,
-                    "CRÍTICO": 0
-                }
-            },
-            "airports": {
-                "monitored": 0,
-                "active_alerts": 0
-            },
-            "model_performance": {
-                "average_confidence": 0.0,
-                "accuracy": 0.0
-            },
-            "message": "Estadísticas basadas en datos históricos simulados"
-        }
-        
-    except Exception as e:
-        logger.error(f"Error obteniendo estadísticas: {str(e)}")
-        raise HTTPException(
-            status_code=500,
-            detail=f"Error al obtener estadísticas: {str(e)}"
-        )
-
-
-@router.get("/recent-predictions")
-async def get_recent_predictions(
-    limit: int = Query(default=10, ge=1, le=50),
-    db: Session = Depends(get_db)
-):
-    """
-    Obtiene las predicciones más recientes del sistema
-    
-    Args:
-        limit: Número de predicciones a retornar
-        db: Sesión de base de datos
-        
-    Returns:
-        Lista de predicciones recientes
-    """
-    try:
-        # TODO: Consultar BD real
-        
-        return {
-            "total": 0,
-            "limit": limit,
-            "predictions": [],
-            "message": "Historial de predicciones en desarrollo"
-        }
-        
-    except Exception as e:
-        logger.error(f"Error obteniendo predicciones recientes: {str(e)}")
-        raise HTTPException(
-            status_code=500,
-            detail=f"Error al obtener predicciones: {str(e)}"
-        )
-
-
-@router.get("/demo")
-async def get_demo_dashboard():
-    """
-    Dashboard de demostración con datos de ejemplo
-    
-    Útil para presentaciones y testing
-    """
-    return {
-        "system_status": {
-            "status": "operational",
-            "version": "1.0.0",
-            "uptime": "24h 15m"
-        },
-        "featured_airport": {
-            "icao": "SKBO",
-            "name": "El Dorado International Airport - Bogotá",
-            "current_risk": "BAJO",
-            "confidence": 0.87,
-            "weather": {
-                "temperatura": 18.5,
-                "viento": 8,
-                "visibilidad": 9000,
-                "condicion": "Parcialmente nublado"
-            }
-        },
-        "recent_alerts": [
-            {
-                "airport": "KJFK",
-                "severity": "MODERATE",
-                "message": "Vientos cruzados reportados",
-                "timestamp": (datetime.now(timezone.utc) - timedelta(hours=2)).isoformat()
-            }
-        ],
-        "statistics_7d": {
-            "total_predictions": 342,
-            "average_confidence": 0.84,
-            "risk_distribution": {
-                "BAJO": 245,
-                "MODERADO": 78,
-                "ALTO": 17,
-                "CRÍTICO": 2
-            }
-        },
-        "note": "Dashboard de demostración con datos simulados"
-    }
-
-
-# ==================== HELPER FUNCTIONS ====================
 
 def _analyze_operational_impact(weather_data: dict, risk_prediction: dict) -> dict:
-    """
-    Analiza el impacto operacional basado en clima y riesgo
-    
-    Args:
-        weather_data: Datos meteorológicos actuales
-        risk_prediction: Predicción de riesgo del modelo ML
-        
-    Returns:
-        Análisis de impacto operacional
-    """
+    """Impacto operacional a partir del clima y el nivel de riesgo."""
     risk_level = risk_prediction.get("risk_level", "BAJO")
     viento = weather_data.get("viento", 0)
     visibilidad = weather_data.get("visibilidad", 10000)
-    
-    # Determinar estado de operaciones
-    if risk_level == "CRÍTICO":
-        departures_status = "RESTRINGIDO"
-        arrivals_status = "RESTRINGIDO"
-    elif risk_level == "ALTO":
-        departures_status = "PRECAUCIÓN"
-        arrivals_status = "PRECAUCIÓN"
+
+    if risk_level == "ALTO":
+        estado = "PRECAUCIÓN"
     else:
-        departures_status = "NORMAL"
-        arrivals_status = "NORMAL"
-    
-    # Identificar restricciones
-    restrictions = []
+        estado = "NORMAL"
+
+    restricciones = []
     if viento > 20:
-        restrictions.append("Vientos fuertes - precaución en despegues/aterrizajes")
+        restricciones.append("Vientos fuertes - precaución en despegues/aterrizajes")
     if visibilidad < 5000:
-        restrictions.append("Visibilidad reducida - procedimientos IFR")
-    
+        restricciones.append("Visibilidad reducida - procedimientos IFR")
+
     return {
-        "departures": departures_status,
-        "arrivals": arrivals_status,
-        "restrictions": restrictions,
-        "affected_operations": len(restrictions) > 0
+        "departures": estado,
+        "arrivals": estado,
+        "restrictions": restricciones,
+        "affected_operations": len(restricciones) > 0,
     }

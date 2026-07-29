@@ -262,7 +262,7 @@ a todo el entrenamiento — sin fuga de futuro). Detalle en el
 | Modelo de pronóstico | RandomForest calibrado, SKBO/SKRG/SKPS/SKMZ |
 | Datos | ~180k METAR reales por aeropuerto (IEM), versionados con DVC |
 | Tests | 208 pasando, cobertura mínima 60 % |
-| Docker | `compose config` validado; build sin verificar (daemon caído) |
+| Docker | `compose config` + revisión estática OK (deps, rutas, .dockerignore); `docker build` sin ejecutar (daemon caído) |
 | Tracking | MLflow (local o DagsHub) |
 
 ## Qué faltaría para uso operacional real
