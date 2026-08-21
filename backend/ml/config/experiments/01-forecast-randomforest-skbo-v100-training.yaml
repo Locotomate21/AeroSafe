@@ -1,0 +1,66 @@
+# Experimento 01 - linea base del pronostico de niebla/tormenta.
+#
+# Reproduce EXACTAMENTE los valores por defecto historicos de
+# ml/scripts/train_forecast.py (el diccionario DEFAULTS). Entrenar con
+# --config con este fichero y entrenar sin ningun argumento tiene que dar
+# el mismo modelo y las mismas metricas hasta el ultimo decimal.
+#
+#   python -m ml.scripts.train_forecast \
+#       --config ml/config/experiments/01-forecast-randomforest-skbo-v100-training.yaml
+#
+# Los experimentos derivados (02-, 03-, ...) parten de este y cambian UNA
+# sola variable cada uno; si cambian dos, no se sabe cual produjo la
+# diferencia.
+version: 1.0.0
+
+project_info:
+  service_name: "forecast"
+  workflow_type: "training"
+  experiment_id: "EXP-001"
+  description: "Baseline: RandomForest, valores por defecto historicos del script."
+
+environment:
+  # Semilla del experimento. Solo se aplica a random_state cuando el bloque
+  # de hyperparameters no lo declara; aqui si lo declara, y coinciden.
+  seed: 42
+
+data_source:
+  icao: "SKBO"
+  horizonte: 3
+  # Corte TEMPORAL por ano: train < 2023, test >= 2023. No es un
+  # train_test_split aleatorio a proposito: en pronostico, mezclar anos
+  # dejaria que el modelo viera el futuro.
+  corte_test: 2023
+  # Columnas del CSV que no son features.
+  no_features: ["objetivo", "timestamp"]
+
+model_config:
+  model_family: "random_forest"
+  task: "binary_classification"
+  # Se pasan tal cual al constructor de sklearn.ensemble.RandomForestClassifier.
+  # El bloque describe el modelo entero: lo que no aparezca aqui queda en el
+  # valor por defecto de sklearn, no en el del script.
+  hyperparameters:
+    n_estimators: 300
+    max_depth: 15
+    min_samples_leaf: 20
+    class_weight: "balanced"   # compensa el desbalance 1:20 de la clase adversa
+    n_jobs: -1
+    random_state: 42
+
+evaluation_params:
+  # Informativo: la metrica principal NO es accuracy (la clase adversa es
+  # ~5%, predecir siempre "no adverso" acierta el 95% sin pronosticar nada).
+  # El umbral de decision se elige maximizando F1 en TRAIN y se aplica en
+  # TEST; el script informa ademas del umbral 0.50 por transparencia.
+  metrics: ["precision", "recall", "f1", "pr_auc", "roc_auc"]
+  baseline: "persistencia"     # "dentro de N horas habra lo mismo que ahora"
+  umbral: "f1_optimo_en_train"
+
+mlops_config:
+  use_mlflow: true
+  # Nombre real del experimento en MLflow hoy. No se cambia aqui: hacerlo
+  # partiria el historico de runs en dos.
+  experiment_name: "aerosafe-pronostico"
+  # null => forecast_<icao>_h<horizonte>, que es lo que usa el script hoy.
+  run_name: null
