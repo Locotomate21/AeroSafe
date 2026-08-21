@@ -20,8 +20,15 @@ Uso:
     cd backend
     python -m ml.scripts.train_forecast --horizonte 3
     python -m ml.scripts.train_forecast --horizonte 3 --no-mlflow
+    python -m ml.scripts.train_forecast \
+        --config ml/config/experiments/01-forecast-randomforest-skbo-v100-training.yaml
+
+Sin --config se usan los valores por defecto de DEFAULTS, que son los
+historicos del script. Con --config, cada campo sale del YAML del
+experimento. Precedencia: argumento de linea de comandos > YAML > DEFAULTS.
 """
 import argparse
+import copy
 import sys
 from pathlib import Path
 
@@ -50,18 +57,137 @@ CORTE_TEST = 2023
 # Columnas que no son features.
 NO_FEATURES = {"objetivo", "timestamp"}
 
+# Configuracion historica del script, la que se usa cuando no se pasa
+# --config. El YAML 01-... la reproduce campo a campo; si tocas algo aqui,
+# tocalo alli tambien o los dos caminos dejan de dar el mismo modelo.
+DEFAULTS = {
+    "icao": "SKBO",
+    "horizonte": 3,
+    "corte_test": CORTE_TEST,
+    "no_features": sorted(NO_FEATURES),
+    "seed": 42,
+    "model_family": "random_forest",
+    "hiperparametros": {
+        "n_estimators": 300,
+        "max_depth": 15,
+        "min_samples_leaf": 20,
+        "class_weight": "balanced",  # compensa el 1:20
+        "n_jobs": -1,
+        "random_state": 42,
+    },
+    "use_mlflow": True,
+    "experiment_name": "aerosafe-pronostico",
+    "run_name": None,  # por defecto: forecast_<icao>_h<horizonte>
+}
 
-def cargar(horizonte: int, icao: str = "skbo"):
+# Unica familia soportada por este script. Un YAML que pida otra cosa se
+# rechaza en vez de entrenar un RandomForest a sus espaldas.
+FAMILIA_SOPORTADA = "random_forest"
+
+
+class ConfigError(ValueError):
+    """El YAML de experimento no describe algo que este script pueda entrenar."""
+
+
+def leer_yaml(ruta: Path) -> dict:
+    """Lee el YAML del experimento. PyYAML solo hace falta con --config."""
+    try:
+        import yaml
+    except ImportError:  # pragma: no cover - depende del entorno
+        raise ConfigError(
+            "--config necesita PyYAML: pip install -r requirements-ml.txt"
+        )
+
+    if not ruta.exists():
+        raise ConfigError(f"no existe el fichero de configuracion {ruta}")
+
+    datos = yaml.safe_load(ruta.read_text(encoding="utf-8"))
+    if not isinstance(datos, dict):
+        raise ConfigError(f"{ruta} no contiene un mapa YAML")
+    return datos
+
+
+def resolver_config(args) -> dict:
+    """
+    Funde DEFAULTS, el YAML y los argumentos de linea de comandos.
+
+    Precedencia: CLI > YAML > DEFAULTS. Los flags llegan a None cuando no se
+    pasan, que es lo que permite distinguir "no lo dijo" de "lo dijo igual
+    que el valor por defecto".
+    """
+    cfg = copy.deepcopy(DEFAULTS)
+
+    if getattr(args, "config", None):
+        y = leer_yaml(Path(args.config))
+        datos = y.get("data_source") or {}
+        entorno = y.get("environment") or {}
+        modelo = y.get("model_config") or {}
+        mlops = y.get("mlops_config") or {}
+
+        familia = modelo.get("model_family", cfg["model_family"])
+        if familia != FAMILIA_SOPORTADA:
+            raise ConfigError(
+                f"model_family '{familia}' no soportada por train_forecast; "
+                f"este script solo entrena '{FAMILIA_SOPORTADA}'"
+            )
+        cfg["model_family"] = familia
+
+        for clave in ("icao", "horizonte", "corte_test", "no_features"):
+            if datos.get(clave) is not None:
+                cfg[clave] = datos[clave]
+        if entorno.get("seed") is not None:
+            cfg["seed"] = entorno["seed"]
+
+        hiper = modelo.get("hyperparameters")
+        if hiper is not None:
+            if not isinstance(hiper, dict):
+                raise ConfigError("model_config.hyperparameters debe ser un mapa")
+            # Sustitucion completa, no fusion: asi el YAML es la descripcion
+            # entera del modelo y no hereda por accidente lo que no declara.
+            cfg["hiperparametros"] = dict(hiper)
+
+        for clave, destino in (
+            ("use_mlflow", "use_mlflow"),
+            ("experiment_name", "experiment_name"),
+            ("run_name", "run_name"),
+        ):
+            if mlops.get(clave) is not None:
+                cfg[destino] = mlops[clave]
+
+    # La semilla del experimento manda sobre random_state solo si el bloque
+    # de hiperparametros no lo declara.
+    cfg["hiperparametros"].setdefault("random_state", cfg["seed"])
+
+    # --- CLI: lo ultimo, gana sobre todo lo anterior ---
+    if args.icao is not None:
+        cfg["icao"] = args.icao
+    if args.horizonte is not None:
+        cfg["horizonte"] = args.horizonte
+    if args.corte_test is not None:
+        cfg["corte_test"] = args.corte_test
+    if args.no_mlflow:
+        cfg["use_mlflow"] = False
+
+    cfg["horizonte"] = int(cfg["horizonte"])
+    cfg["corte_test"] = int(cfg["corte_test"])
+    cfg["no_features"] = set(cfg["no_features"])
+    return cfg
+
+
+def cargar(horizonte: int, icao: str = "skbo", corte_test: int = CORTE_TEST,
+           no_features=NO_FEATURES):
     ruta = FORECAST_DIR / f"forecast_{icao.lower()}_h{horizonte}.csv"
     if not ruta.exists():
         print(f"ERROR: falta {ruta}. Ejecutar build_forecast_dataset primero.")
         sys.exit(1)
 
     df = pd.read_csv(ruta, parse_dates=["timestamp"], low_memory=False)
-    features = [c for c in df.columns if c not in NO_FEATURES]
+    features = [c for c in df.columns if c not in set(no_features)]
 
-    train = df[df.timestamp.dt.year < CORTE_TEST]
-    test = df[df.timestamp.dt.year >= CORTE_TEST]
+    # Corte POR ANO, no aleatorio: es un problema de pronostico y un
+    # train_test_split dejaria que el modelo viera el futuro.
+    train = df[df.timestamp.dt.year < corte_test]
+    test = df[df.timestamp.dt.year >= corte_test]
 
     return train, test, features
 
@@ -116,16 +242,36 @@ def imprimir(res: dict) -> None:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Entrena el pronostico")
-    parser.add_argument("--icao", default="SKBO")
-    parser.add_argument("--horizonte", type=int, default=3)
+    # Los defaults viven en DEFAULTS, no aqui: con default=None se distingue
+    # "no lo pasaron" de "lo pasaron con el valor por defecto", que es lo que
+    # hace posible la precedencia CLI > YAML > DEFAULTS.
+    parser.add_argument("--config", default=None,
+                        help="YAML de experimento (ml/config/experiments/)")
+    parser.add_argument("--icao", default=None)
+    parser.add_argument("--horizonte", type=int, default=None)
+    parser.add_argument("--corte-test", type=int, default=None,
+                        help="primer ano del conjunto de test (corte temporal)")
     parser.add_argument("--no-mlflow", action="store_true")
     args = parser.parse_args()
 
+    try:
+        cfg = resolver_config(args)
+    except ConfigError as e:
+        print(f"ERROR de configuracion: {e}")
+        return 1
+
+    icao = cfg["icao"]
+    horizonte = cfg["horizonte"]
+
     print("=" * 72)
-    print(f"PRONOSTICO DE NIEBLA/TORMENTA A +{args.horizonte}h - ENTRENAMIENTO")
+    print(f"PRONOSTICO DE NIEBLA/TORMENTA A +{horizonte}h - ENTRENAMIENTO")
     print("=" * 72)
 
-    train, test, features = cargar(args.horizonte, args.icao)
+    if args.config:
+        print("\n  config: " + args.config)
+
+    train, test, features = cargar(horizonte, icao, cfg["corte_test"],
+                                   cfg["no_features"])
     print(f"\n  train: {len(train):,} ({train.objetivo.mean():.2%} adversos)  "
           f"test: {len(test):,} ({test.objetivo.mean():.2%} adversos)")
     print(f"  features: {len(features)}")
@@ -145,14 +291,11 @@ def main() -> int:
     print("MODELO (RandomForest)")
     print("-" * 72)
 
-    modelo = RandomForestClassifier(
-        n_estimators=300,
-        max_depth=15,
-        min_samples_leaf=20,
-        class_weight="balanced",  # compensa el 1:20
-        n_jobs=-1,
-        random_state=42,
-    )
+    try:
+        modelo = RandomForestClassifier(**cfg["hiperparametros"])
+    except TypeError as e:
+        print(f"ERROR de configuracion: hiperparametros invalidos ({e})")
+        return 1
     modelo.fit(X_train, y_train)
 
     prob_train = modelo.predict_proba(X_train)[:, 1]
@@ -202,27 +345,33 @@ def main() -> int:
 
     # --- Guardar ---
     MODEL_DIR.mkdir(parents=True, exist_ok=True)
-    joblib.dump(modelo, MODEL_DIR / f"forecast_{args.icao.lower()}_h{args.horizonte}.pkl")
-    (MODEL_DIR / f"features_{args.icao.lower()}_h{args.horizonte}.txt").write_text(
+    joblib.dump(modelo, MODEL_DIR / f"forecast_{icao.lower()}_h{horizonte}.pkl")
+    (MODEL_DIR / f"features_{icao.lower()}_h{horizonte}.txt").write_text(
         "\n".join(features), encoding="utf-8"
     )
     print(f"\n  Modelo guardado en {MODEL_DIR.relative_to(BACKEND_DIR)}/")
 
     # --- MLflow ---
-    if not args.no_mlflow:
+    if cfg["use_mlflow"]:
         try:
             import mlflow
             from ml.config.mlflow_config import MLFLOW_TRACKING_URI
 
+            run_name = cfg["run_name"] or f"forecast_{icao.lower()}_h{horizonte}"
             mlflow.set_tracking_uri(MLFLOW_TRACKING_URI)
-            mlflow.set_experiment("aerosafe-pronostico")
-            with mlflow.start_run(run_name=f"forecast_{args.icao.lower()}_h{args.horizonte}"):
-                mlflow.log_param("icao", args.icao)
-                mlflow.log_param("horizonte_h", args.horizonte)
+            mlflow.set_experiment(cfg["experiment_name"])
+            with mlflow.start_run(run_name=run_name):
+                mlflow.log_param("icao", icao)
+                mlflow.log_param("horizonte_h", horizonte)
                 mlflow.log_param("n_train", len(train))
                 mlflow.log_param("n_test", len(test))
                 mlflow.log_param("split", "temporal")
+                mlflow.log_param("corte_test", cfg["corte_test"])
                 mlflow.log_param("dataset", "real (IEM METAR SKBO)")
+                for k, v in cfg["hiperparametros"].items():
+                    mlflow.log_param(f"hp_{k}", v)
+                if args.config:
+                    mlflow.log_param("config", args.config)
                 for k in ("precision", "recall", "f1", "pr_auc", "roc_auc"):
                     mlflow.log_metric(f"modelo_{k}", res[k])
                 mlflow.log_metric("baseline_f1", base["f1"])

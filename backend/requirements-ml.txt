@@ -5,6 +5,9 @@
 
 -r requirements.txt
 
+# --- Configuracion de experimentos (ml/config/experiments/*.yaml) ---
+PyYAML>=6.0
+
 # --- Tracking de experimentos ---
 mlflow==3.9.0
 dagshub>=0.3.35
